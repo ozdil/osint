@@ -1,0 +1,36 @@
+[package]
+name = "osint"
+version = "0.1.0"
+edition = "2021"
+description = "Pasif, kaynak odakli acik kaynak istihbarat (OSINT) platformu"
+license = "MIT"
+
+[[bin]]
+name = "osint"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+axum = "0.7"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
+futures = "0.3"
+hex = "0.4"
+hickory-resolver = "0.24"
+kamadak-exif = "0.5"
+md-5 = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+toml = "0.8"
+url = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

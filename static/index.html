@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>OSINT Platformu</title>
+<style>
+:root{--bg:#0f1115;--pn:#171a21;--bd:#2a2f3a;--fg:#d8dee9;--mut:#8a93a6;--ac:#7aa2f7;--ok:#9ece6a;--wr:#e0af68;--er:#f7768e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"JetBrainsMono Nerd Font","JetBrains Mono",monospace;font-size:12pt}
+header{padding:12px 20px;border-bottom:1px solid var(--bd);display:flex;gap:16px;align-items:center}
+h1{font-size:18pt;margin:0;font-weight:600} h2{font-size:14pt;font-weight:600;margin:0 0 10px}
+main{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px}
+.pn{background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:16px}
+label{display:block;font-size:10pt;color:var(--mut);margin:8px 0 4px}
+input,select,button{font:inherit;width:100%;padding:7px 9px;background:#0b0d11;color:var(--fg);border:1px solid var(--bd);border-radius:4px}
+button{background:var(--ac);color:#0b0d11;border:0;cursor:pointer;margin-top:10px;font-weight:600}
+button.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+.row{display:flex;gap:8px} .row>*{flex:1}
+pre{background:#0b0d11;border:1px solid var(--bd);padding:10px;overflow:auto;max-height:60vh;font-size:10pt;margin:0}
+canvas{width:100%;height:520px;background:#0b0d11;border:1px solid var(--bd);border-radius:4px}
+.tabs{display:flex;gap:6px;margin-bottom:10px} .tabs button{width:auto;margin:0;padding:5px 12px}
+.tabs button.on{background:var(--ac);color:#0b0d11}
+table{width:100%;border-collapse:collapse;font-size:11pt} td,th{border-bottom:1px solid var(--bd);padding:5px;text-align:left}
+.mut{color:var(--mut);font-size:10pt} .st{font-size:10pt;margin-top:8px;min-height:1.2em}
+.lg span{display:inline-block;margin-right:10px;font-size:10pt}
+</style>
+</head>
+<body>
+<header><h1>OSINT Platformu</h1><span class="mut">Pasif acik kaynak istihbarat - yerel panel</span></header>
+<main>
+<aside>
+  <div class="pn">
+    <h2>Vaka</h2>
+    <select id="vaka"><option value="">(kaydetme)</option></select>
+    <div class="row"><input id="vakaAd" placeholder="Yeni vaka adi"><button class="sec" onclick="yeniVaka()" style="flex:0 0 80px">Ekle</button></div>
+    <div class="row"><button class="sec" onclick="rapor('html')">HTML Rapor</button><button class="sec" onclick="rapor('md')">Markdown</button></div>
+  </div>
+  <div class="pn">
+    <h2>Tekil Sorgu</h2>
+    <label>Modul</label>
+    <select id="modul">
+      <option value="domain">Alan adi</option><option value="ip">IP adresi</option><option value="web">Web sitesi</option>
+      <option value="user">Kullanici adi</option><option value="email">E-posta</option><option value="phone">Telefon</option>
+    </select>
+    <label>Hedef</label><input id="hedef" placeholder="ornek.com">
+    <button onclick="calistir()">Sorgula</button>
+  </div>
+  <div class="pn">
+    <h2>Pivot Analizi</h2>
+    <label>Tohum turu</label>
+    <select id="ptur"><option value="domain">Alan adi</option><option value="url">URL</option><option value="ip">IP</option><option value="email">E-posta</option><option value="user">Kullanici adi</option></select>
+    <label>Tohum</label><input id="phedef" placeholder="ornek.com">
+    <div class="row"><div><label>Derinlik</label><input id="pder" type="number" value="2" min="1" max="4"></div>
+    <div><label>Azami dugum</label><input id="pmax" type="number" value="150" min="10" max="500"></div></div>
+    <label><input id="pgenis" type="checkbox" style="width:auto"> Kapsam disini da genislet</label>
+    <button onclick="pivotla()">Pivotu Baslat</button>
+  </div>
+  <div class="st" id="st"></div>
+</aside>
+<section>
+  <div class="pn">
+    <div class="tabs"><button class="on" data-t="g">Grafik</button><button data-t="a">Iliskilendirme</button><button data-t="j">Ham Veri</button></div>
+    <div id="t-g"><canvas id="cv"></canvas><div class="lg" id="lg"></div></div>
+    <div id="t-a" hidden></div>
+    <div id="t-j" hidden><pre id="out">Sonuc burada gorunecek.</pre></div>
+  </div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const st=(m,c)=>{$("st").textContent=m;$("st").style.color=c||"var(--mut)"};
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  ["g","a","j"].forEach(t=>$("t-"+t).hidden=t!==b.dataset.t);
+});
+async function api(u,o){const r=await fetch(u,o);const t=await r.text();let j;try{j=JSON.parse(t)}catch{j=t}if(!r.ok)throw new Error(j.hata||t);return j}
+const post=(u,b)=>api(u,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(b)});
+const vaka=()=>$("vaka").value?Number($("vaka").value):null;
+async function vakalar(){const l=await api("/api/vakalar");const s=$("vaka"),cur=s.value;
+  s.innerHTML='<option value="">(kaydetme)</option>'+l.map(v=>`<option value="${v.id}">#${v.id} ${esc(v.ad)} (${v.bulgu_sayisi})</option>`).join("");s.value=cur}
+async function yeniVaka(){try{const r=await post("/api/vakalar",{ad:$("vakaAd").value});await vakalar();$("vaka").value=r.id;$("vakaAd").value=""}catch(e){st(e.message,"var(--er)")}}
+function rapor(b){if(!vaka())return st("Once bir vaka secin","var(--wr)");window.open(`/api/vakalar/${vaka()}/rapor?bicim=${b}`)}
+async function calistir(){st("Sorgulaniyor...");try{const v=await post("/api/calistir",{modul:$("modul").value,hedef:$("hedef").value,vaka:vaka()});
+  $("out").textContent=JSON.stringify(v,null,2);document.querySelector('[data-t=j]').click();st("Tamamlandi","var(--ok)");vakalar()}catch(e){st(e.message,"var(--er)")}}
+async function pivotla(){st("Pivot calisiyor; derinlige gore birkac dakika surebilir...");const t0=Date.now();
+  try{const v=await post("/api/pivot",{tur:$("ptur").value,hedef:$("phedef").value,derinlik:+$("pder").value,max_dugum:+$("pmax").value,genis:$("pgenis").checked,vaka:vaka()});
+  $("out").textContent=JSON.stringify(v,null,2);ciz(v.grafik);analiz(v.analiz);document.querySelector('[data-t=g]').click();
+  st(`Tamamlandi: ${v.analiz.ozet.dugum} dugum, ${v.analiz.ozet.kenar} kenar (${((Date.now()-t0)/1000).toFixed(1)} sn)`,"var(--ok)");vakalar()}catch(e){st(e.message,"var(--er)")}}
+function analiz(a){
+  const k=a.kumeler.map(c=>`<tr><td>${esc(c.gosterge_turu)}</td><td>${esc(c.gosterge)}</td><td>${c.agirlik}</td><td>${c.varliklar.map(esc).join("<br>")}</td><td class=mut>${esc(c.yorum)}</td></tr>`).join("")||'<tr><td colspan=5 class=mut>Ortak gosterge bulunamadi</td></tr>';
+  const l=a.varlik_baglantilari.map(x=>`<tr><td>${esc(x.a)}</td><td>${esc(x.b)}</td><td>${x.skor}</td><td>${esc(x.guven)}</td></tr>`).join("");
+  const p=a.harici_pivotlar.map(x=>`<tr><td>${esc(x.tur)}</td><td>${esc(x.deger)}</td><td>${Object.entries(x.baglantilar||{}).map(([n,u])=>u.startsWith("http")?`<a style="color:var(--ac)" target=_blank rel=noopener href="${esc(u)}">${esc(n)}</a>`:`${esc(n)}: ${esc(u)}`).join(" ")}</td></tr>`).join("");
+  $("t-a").innerHTML=`<h2>Ortak Gosterge Kumeleri</h2><table><tr><th>Tur</th><th>Gosterge</th><th>Agirlik</th><th>Varliklar</th><th>Yorum</th></tr>${k}</table>
+  <h2 style="margin-top:18px">Varlik Baglantilari</h2><table><tr><th>A</th><th>B</th><th>Skor</th><th>Guven</th></tr>${l}</table>
+  <h2 style="margin-top:18px">Harici Pivotlar</h2><table><tr><th>Tur</th><th>Deger</th><th>Baglantilar</th></tr>${p}</table>`}
+const RENK={domain:"#7aa2f7",ip:"#9ece6a",url:"#2ac3de",email:"#e0af68",username:"#bb9af7",account:"#c0caf5",asn:"#73daca",tracking_id:"#f7768e",favicon_hash:"#ff9e64",nameserver:"#565f89",registrar:"#414868",technology:"#3b4261"};
+function ciz(g){
+  const cv=$("cv"),ctx=cv.getContext("2d"),W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio);
+  const w=W/devicePixelRatio,h=H/devicePixelRatio,N=Object.values(g.dugumler),idx={};
+  N.forEach((n,i)=>{idx[n.id]=n;n.x=w/2+Math.cos(i)*(50+n.derinlik*120);n.y=h/2+Math.sin(i)*(50+n.derinlik*120);n.vx=n.vy=0});
+  const E=g.kenarlar.filter(e=>idx[e.kaynak]&&idx[e.hedef]);
+  for(let it=0;it<300;it++){
+    for(const a of N)for(const b of N){if(a===b)continue;const dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+.01,f=900/d2;a.vx+=dx*f/Math.sqrt(d2);a.vy+=dy*f/Math.sqrt(d2)}
+    for(const e of E){const a=idx[e.kaynak],b=idx[e.hedef],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,f=(d-70)*.02;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}
+    for(const n of N){n.vx+=(w/2-n.x)*.002;n.vy+=(h/2-n.y)*.002;n.x+=n.vx*.5;n.y+=n.vy*.5;n.vx*=.6;n.vy*=.6;n.x=Math.max(10,Math.min(w-10,n.x));n.y=Math.max(10,Math.min(h-10,n.y))}
+  }
+  ctx.clearRect(0,0,w,h);ctx.strokeStyle="#2a2f3a";ctx.lineWidth=1;
+  for(const e of E){const a=idx[e.kaynak],b=idx[e.hedef];ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+  ctx.font='10px "JetBrainsMono Nerd Font", monospace';
+  for(const n of N){ctx.fillStyle=RENK[n.tur]||"#888";ctx.beginPath();ctx.arc(n.x,n.y,n.derinlik===0?8:n.kapsamda?5:3,0,7);ctx.fill();
+    if(N.length<80||n.derinlik<2){ctx.fillStyle="#a9b1d6";ctx.fillText(n.deger.slice(0,32),n.x+7,n.y+3)}}
+  $("lg").innerHTML=Object.entries(RENK).map(([k,c])=>`<span><span style="color:${c}">\u25cf</span> ${k}</span>`).join("");
+}
+vakalar().catch(()=>{});
+</script>
+</body>
+</html>
