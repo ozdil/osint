@@ -25,26 +25,28 @@ pub async fn run(http: &Http, target: &str) -> Result<Value> {
     if validate::is_non_public(&ip) {
         bail!("Genel olmayan adres; pasif istihbarat kaynaklari bu adres icin anlamsizdir: {ip}");
     }
-    let (u1, ptrn, u2) = (format!("https://ipinfo.io/{ip}/json"), ptr_name(&ip), format!("https://internetdb.shodan.io/{ip}"));
-    let (geo, ptr, idb) = tokio::join!(
-        http.json(&u1, 64 * 1024),
-        dns(http, &ptrn, "PTR"),
-        http.json(&u2, 256 * 1024),
-    );
-    let geo = geo.unwrap_or_else(|e| json!({"hata": e.to_string()}));
-    let (asn, org) = geo["org"]
-        .as_str()
-        .and_then(|o| o.split_once(' '))
-        .map(|(a, b)| (json!(a), json!(b)))
-        .unwrap_or((Value::Null, Value::Null));
+    let ptrn = ptr_name(&ip);
+    let ips = ip.to_string();
+    let u2 = format!("https://internetdb.shodan.io/{ip}");
+    let (mut geo, ptr, idb) = tokio::join!(geo(http, &ips), dns(http, &ptrn, "PTR"), http.json(&u2, 256 * 1024));
+    if geo["asn"].is_null() {
+        if let Some((asn, name, prefix)) = cymru(http, &ip).await {
+            geo["asn"] = json!(asn);
+            if geo["kurum"].is_null() || geo["kaynak"].is_null() {
+                geo["kurum"] = json!(name);
+            }
+            geo["onek"] = json!(prefix);
+        }
+    }
     Ok(json!({
         "ip": ip.to_string(),
-        "konum": {
-            "ulke": geo["country"], "bolge": geo["region"], "sehir": geo["city"],
-            "koordinat": geo["loc"], "saat_dilimi": geo["timezone"],
-        },
-        "asn": asn,
-        "kurum": org,
+        "konum": geo["konum"],
+        "asn": geo["asn"],
+        "kurum": geo["kurum"],
+        "ag": geo["ag"],
+        "bgp_onek": geo["onek"],
+        "kaynak": geo["kaynak"],
+        "kaynak_hatalari": geo["hatalar"],
         "ters_dns": ptr.unwrap_or_default().iter().map(|s| s.trim_end_matches('.')).collect::<Vec<_>>(),
         "pasif_servisler": match idb {
             Ok(Value::Null) => json!({"durum": "kayit yok"}),
@@ -55,6 +57,59 @@ pub async fn run(http: &Http, target: &str) -> Result<Value> {
             Err(e) => json!({"hata": e.to_string()}),
         },
     }))
+}
+
+/// Team Cymru IP->ASN eslemesi (DNS TXT). HTTP kaynaklari engelli aglarda da calisir.
+async fn cymru(http: &Http, ip: &IpAddr) -> Option<(String, String, String)> {
+    let zone = match ip {
+        IpAddr::V4(_) => "origin.asn.cymru.com",
+        IpAddr::V6(_) => "origin6.asn.cymru.com",
+    };
+    let rev = ptr_name(ip);
+    let rev = rev.trim_end_matches(".in-addr.arpa").trim_end_matches(".ip6.arpa");
+    let txt = dns(http, &format!("{rev}.{zone}"), "TXT").await.ok()?;
+    let f: Vec<String> = txt.first()?.split('|').map(|x| x.trim().to_string()).collect();
+    let asn = f.first()?.split_whitespace().next()?.to_string();
+    let name = dns(http, &format!("AS{asn}.asn.cymru.com"), "TXT").await.ok()
+        .and_then(|t| t.first().and_then(|l| l.split('|').nth(4).map(|x| x.trim().to_string())))
+        .unwrap_or_default();
+    Some((format!("AS{asn}"), name, f.get(1).cloned().unwrap_or_default()))
+}
+
+/// Saglayici zinciri: ipinfo -> ipwho.is -> RDAP. Ilk basarili kaynak kullanilir, hatalar raporlanir.
+async fn geo(http: &Http, ip: &str) -> Value {
+    let mut errs = vec![];
+    match http.json(&format!("https://ipinfo.io/{ip}/json"), 64 * 1024).await {
+        Ok(v) if v["ip"].is_string() => {
+            let (asn, org) = v["org"].as_str().and_then(|o| o.split_once(' ')).map(|(a, b)| (json!(a), json!(b))).unwrap_or((Value::Null, Value::Null));
+            return json!({"kaynak": "ipinfo.io", "asn": asn, "kurum": org, "ag": Value::Null, "hatalar": errs,
+                "konum": {"ulke": v["country"], "bolge": v["region"], "sehir": v["city"], "koordinat": v["loc"], "saat_dilimi": v["timezone"]}});
+        }
+        Ok(_) => errs.push("ipinfo.io: beklenmeyen yanit".to_string()),
+        Err(e) => errs.push(format!("ipinfo.io: {e:#}")),
+    }
+    match http.json(&format!("https://ipwho.is/{ip}"), 64 * 1024).await {
+        Ok(v) if v["success"] == true => {
+            let c = &v["connection"];
+            return json!({"kaynak": "ipwho.is", "asn": c["asn"].as_u64().map(|a| format!("AS{a}")), "kurum": c["org"], "ag": Value::Null, "hatalar": errs,
+                "konum": {"ulke": v["country_code"], "bolge": v["region"], "sehir": v["city"],
+                          "koordinat": format!("{},{}", v["latitude"], v["longitude"]), "saat_dilimi": v["timezone"]["id"]}});
+        }
+        Ok(_) => errs.push("ipwho.is: beklenmeyen yanit".to_string()),
+        Err(e) => errs.push(format!("ipwho.is: {e:#}")),
+    }
+    match http.json(&format!("https://rdap.org/ip/{ip}"), 512 * 1024).await {
+        Ok(v) if !v.is_null() => {
+            let cidr = v["cidr0_cidrs"][0].as_object().map(|c| format!("{}/{}", c.get("v4prefix").or(c.get("v6prefix")).and_then(Value::as_str).unwrap_or(""), c.get("length").and_then(Value::as_u64).unwrap_or(0)));
+            json!({"kaynak": "RDAP", "asn": Value::Null, "kurum": v["name"], "hatalar": errs,
+                   "ag": {"ad": v["name"], "cidr": cidr, "baslangic": v["startAddress"], "bitis": v["endAddress"], "tur": v["type"]},
+                   "konum": {"ulke": v["country"]}})
+        }
+        r => {
+            if let Err(e) = r { errs.push(format!("RDAP: {e:#}")); }
+            json!({"kaynak": Value::Null, "hatalar": errs, "konum": Value::Null})
+        }
+    }
 }
 
 #[cfg(test)]

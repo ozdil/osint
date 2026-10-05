@@ -31,27 +31,27 @@ table{width:100%;border-collapse:collapse;font-size:11pt} td,th{border-bottom:1p
 <aside>
   <div class="pn">
     <h2>Vaka</h2>
-    <select id="vaka"><option value="">(kaydetme)</option></select>
-    <div class="row"><input id="vakaAd" placeholder="Yeni vaka adi"><button class="sec" onclick="yeniVaka()" style="flex:0 0 80px">Ekle</button></div>
+    <select id="vaka" aria-label="Aktif vaka"><option value="">(kaydetme)</option></select>
+    <div class="row"><input id="vakaAd" aria-label="Yeni vaka adi" placeholder="Yeni vaka adi"><button class="sec" onclick="yeniVaka()" style="flex:0 0 80px">Ekle</button></div>
     <div class="row"><button class="sec" onclick="rapor('html')">HTML Rapor</button><button class="sec" onclick="rapor('md')">Markdown</button></div>
   </div>
   <div class="pn">
     <h2>Tekil Sorgu</h2>
-    <label>Modul</label>
+    <label for="modul">Modul</label>
     <select id="modul">
       <option value="domain">Alan adi</option><option value="ip">IP adresi</option><option value="web">Web sitesi</option>
       <option value="user">Kullanici adi</option><option value="email">E-posta</option><option value="phone">Telefon</option><option value="history">Gecmis ve sizinti</option>
     </select>
-    <label>Hedef</label><input id="hedef" placeholder="ornek.com">
+    <label for="hedef">Hedef</label><input id="hedef" placeholder="ornek.com">
     <button onclick="calistir()">Sorgula</button>
   </div>
   <div class="pn">
     <h2>Pivot Analizi</h2>
-    <label>Tohum turu</label>
+    <label for="ptur">Tohum turu</label>
     <select id="ptur"><option value="domain">Alan adi</option><option value="url">URL</option><option value="ip">IP</option><option value="email">E-posta</option><option value="user">Kullanici adi</option></select>
-    <label>Tohum</label><input id="phedef" placeholder="ornek.com">
-    <div class="row"><div><label>Derinlik</label><input id="pder" type="number" value="2" min="1" max="4"></div>
-    <div><label>Azami dugum</label><input id="pmax" type="number" value="150" min="10" max="500"></div></div>
+    <label for="phedef">Tohum</label><input id="phedef" placeholder="ornek.com">
+    <div class="row"><div><label for="pder">Derinlik</label><input id="pder" type="number" value="2" min="1" max="4"></div>
+    <div><label for="pmax">Azami dugum</label><input id="pmax" type="number" value="150" min="10" max="500"></div></div>
     <label><input id="pgenis" type="checkbox" style="width:auto"> Kapsam disini da genislet</label>
     <button onclick="pivotla()">Pivotu Baslat</button>
   </div>
@@ -73,7 +73,10 @@ const st=(m,c)=>{$("st").textContent=m;$("st").style.color=c||"var(--mut)"};
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
   ["g","a","j"].forEach(t=>$("t-"+t).hidden=t!==b.dataset.t);
+  if(b.dataset.t==="g"&&sonGrafik)ciz(sonGrafik);
 });
+let sonGrafik=null;
+addEventListener("resize",()=>{if(sonGrafik&&!$("t-g").hidden)ciz(sonGrafik)});
 async function api(u,o){const r=await fetch(u,o);const t=await r.text();let j;try{j=JSON.parse(t)}catch{j=t}if(!r.ok)throw new Error(j.hata||t);return j}
 const post=(u,b)=>api(u,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(b)});
 const vaka=()=>$("vaka").value?Number($("vaka").value):null;
@@ -82,11 +85,11 @@ async function vakalar(){const l=await api("/api/vakalar");const s=$("vaka"),cur
 async function yeniVaka(){try{const r=await post("/api/vakalar",{ad:$("vakaAd").value});await vakalar();$("vaka").value=r.id;$("vakaAd").value=""}catch(e){st(e.message,"var(--er)")}}
 function rapor(b){if(!vaka())return st("Once bir vaka secin","var(--wr)");window.open(`/api/vakalar/${vaka()}/rapor?bicim=${b}`)}
 async function calistir(){st("Sorgulaniyor...");try{const v=await post("/api/calistir",{modul:$("modul").value,hedef:$("hedef").value,vaka:vaka()});
-  $("out").textContent=JSON.stringify(v,null,2);document.querySelector('[data-t=j]').click();st("Tamamlandi","var(--ok)");vakalar()}catch(e){st(e.message,"var(--er)")}}
+  $("out").textContent=JSON.stringify(v,null,2);document.querySelector('[data-t=j]').click();st("Tamamlandi","var(--ok)");await vakalar()}catch(e){st(e.message,"var(--er)")}}
 async function pivotla(){st("Pivot calisiyor; derinlige gore birkac dakika surebilir...");const t0=Date.now();
   try{const v=await post("/api/pivot",{tur:$("ptur").value,hedef:$("phedef").value,derinlik:+$("pder").value,max_dugum:+$("pmax").value,genis:$("pgenis").checked,vaka:vaka()});
-  $("out").textContent=JSON.stringify(v,null,2);ciz(v.grafik);analiz(v.analiz);document.querySelector('[data-t=g]').click();
-  st(`Tamamlandi: ${v.analiz.ozet.dugum} dugum, ${v.analiz.ozet.kenar} kenar (${((Date.now()-t0)/1000).toFixed(1)} sn)`,"var(--ok)");vakalar()}catch(e){st(e.message,"var(--er)")}}
+  $("out").textContent=JSON.stringify(v,null,2);sonGrafik=v.grafik;analiz(v.analiz);document.querySelector('[data-t=g]').click();
+  st(`Tamamlandi: ${v.analiz.ozet.dugum} dugum, ${v.analiz.ozet.kenar} kenar (${((Date.now()-t0)/1000).toFixed(1)} sn)`,"var(--ok)");await vakalar()}catch(e){st(e.message,"var(--er)")}}
 function analiz(a){
   const k=a.kumeler.map(c=>`<tr><td>${esc(c.gosterge_turu)}</td><td>${esc(c.gosterge)}</td><td>${c.agirlik}</td><td>${c.varliklar.map(esc).join("<br>")}</td><td class=mut>${esc(c.yorum)}</td></tr>`).join("")||'<tr><td colspan=5 class=mut>Ortak gosterge bulunamadi</td></tr>';
   const l=a.varlik_baglantilari.map(x=>`<tr><td>${esc(x.a)}</td><td>${esc(x.b)}</td><td>${x.skor}</td><td>${esc(x.guven)}</td></tr>`).join("");
@@ -96,7 +99,8 @@ function analiz(a){
   <h2 style="margin-top:18px">Harici Pivotlar</h2><table><tr><th>Tur</th><th>Deger</th><th>Baglantilar</th></tr>${p}</table>`}
 const RENK={domain:"#7aa2f7",ip:"#9ece6a",url:"#2ac3de",email:"#e0af68",username:"#bb9af7",account:"#c0caf5",asn:"#73daca",tracking_id:"#f7768e",favicon_hash:"#ff9e64",nameserver:"#565f89",registrar:"#414868",technology:"#3b4261"};
 function ciz(g){
-  const cv=$("cv"),ctx=cv.getContext("2d"),W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio);
+  const cv=$("cv");if(!cv.clientWidth)return;
+  const ctx=cv.getContext("2d"),W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
   const w=W/devicePixelRatio,h=H/devicePixelRatio,N=Object.values(g.dugumler),idx={};
   N.forEach((n,i)=>{idx[n.id]=n;n.x=w/2+Math.cos(i)*(50+n.derinlik*120);n.y=h/2+Math.sin(i)*(50+n.derinlik*120);n.vx=n.vy=0});
   const E=g.kenarlar.filter(e=>idx[e.kaynak]&&idx[e.hedef]);

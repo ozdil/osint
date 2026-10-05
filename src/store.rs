@@ -91,9 +91,8 @@ impl Store {
         Ok(json!({"id": id, "ad": name, "not": note, "olusturma": created, "bulgular": findings}))
     }
 
-    pub fn delete_case(&self, id: i64) -> Result<()> {
-        self.conn.execute("DELETE FROM cases WHERE id=?1", [id])?;
-        Ok(())
+    pub fn delete_case(&self, id: i64) -> Result<bool> {
+        Ok(self.conn.execute("DELETE FROM cases WHERE id=?1", [id])? > 0)
     }
 }
 

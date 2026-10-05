@@ -108,7 +108,9 @@ async fn real_main() -> Result<()> {
     let http = http::Http::new()?;
     let save = |module: &str, target: &str, v: &Value| -> Result<()> {
         if let Some(id) = cli.vaka {
-            let h = store::Store::open()?.add_finding(id, module, target, v)?;
+            let h = store::Store::open()?.add_finding(id, module, target, v).map_err(|e| {
+                if e.to_string().contains("FOREIGN KEY") { anyhow::anyhow!("Vaka bulunamadi: {id}") } else { e }
+            })?;
             eprintln!("Vaka {id} kaydedildi (sha256 {h})");
         }
         Ok(())
@@ -155,8 +157,11 @@ async fn real_main() -> Result<()> {
                     }
                 }
                 VakaCmd::Sil { id } => {
-                    s.delete_case(*id)?;
-                    println!("Vaka silindi: {id}");
+                    if s.delete_case(*id)? {
+                        println!("Vaka silindi: {id}");
+                    } else {
+                        anyhow::bail!("Vaka bulunamadi: {id}");
+                    }
                 }
             }
         }

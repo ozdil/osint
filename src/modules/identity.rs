@@ -261,7 +261,7 @@ pub fn phone(target: &str) -> Result<Value> {
         "arastirma_baglantilari": {
             "whatsapp": wa,
             "telegram": format!("https://t.me/{p}"),
-            "google": format!("https://www.google.com/search?q=%22{p}%22+OR+%22{national}%22"),
+            "google": format!("https://www.google.com/search?q=%22%2B{digits}%22+OR+%22{national}%22"),
         }
     }))
 }
