@@ -91,7 +91,56 @@ pub fn document_meta(bytes: &[u8]) -> Value {
         }
         return json!({"tur": "PDF", "metaveri": m});
     }
+    if bytes.starts_with(b"PK\x03\x04") {
+        return ooxml_meta(bytes);
+    }
     Value::Null
+}
+
+/// DOCX/XLSX/PPTX: docProps/core.xml ve app.xml. Her parca 1 MiB ile sinirli (zip bombasi korumasi).
+fn ooxml_meta(bytes: &[u8]) -> Value {
+    let Ok(mut z) = zip::ZipArchive::new(std::io::Cursor::new(bytes)) else { return Value::Null };
+    let mut m = serde_json::Map::new();
+    for part in ["docProps/core.xml", "docProps/app.xml"] {
+        let Ok(f) = z.by_name(part) else { continue };
+        let mut xml = String::new();
+        if f.take(1024 * 1024).read_to_string(&mut xml).is_err() {
+            continue;
+        }
+        for tag in ["dc:creator", "cp:lastModifiedBy", "dcterms:created", "dcterms:modified", "dc:title", "cp:revision", "Company", "Application", "AppVersion", "Manager", "Template", "TotalTime"] {
+            if let Some(v) = xml_tag(&xml, tag) {
+                m.insert(tag.rsplit(':').next().unwrap_or(tag).to_string(), json!(v));
+            }
+        }
+    }
+    if m.is_empty() { Value::Null } else { json!({"tur": "OOXML", "metaveri": m}) }
+}
+
+fn xml_tag(xml: &str, tag: &str) -> Option<String> {
+    let s = xml.find(&format!("<{tag}"))?;
+    let s = s + xml[s..].find('>')? + 1;
+    let e = s + xml[s..].find(&format!("</{tag}>"))?;
+    Some(xml[s..e].chars().take(200).collect())
+}
+
+/// Birden cok gorselin GPS konumlarini GeoJSON FeatureCollection olarak dondurur.
+pub fn geojson(paths: &[String]) -> Value {
+    let mut features = vec![];
+    let mut skipped = vec![];
+    for p in paths {
+        let ex = read_file(Path::new(p)).map(|b| exif_of(&b));
+        match ex {
+            Ok(e) if e["gps"].is_object() => features.push(json!({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [e["gps"]["boylam"], e["gps"]["enlem"]]},
+                "properties": {"dosya": p, "tarih": e["cekim_tarihi"], "cihaz": e["cihaz"]},
+            })),
+            Ok(_) => skipped.push(json!({"dosya": p, "neden": "GPS yok"})),
+            Err(err) => skipped.push(json!({"dosya": p, "neden": err.to_string()})),
+        }
+    }
+    json!({"type": "FeatureCollection", "features": features, "atlanan": skipped,
+           "not": "geojson.io veya QGIS ile acilabilir"})
 }
 
 pub async fn run(http: &Http, cfg: &Config, target: &str) -> Result<Value> {
@@ -123,6 +172,21 @@ mod tests {
     #[test]
     fn hash_known() {
         assert_eq!(super::hashes(b"abc")["sha256"], "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    }
+
+    #[test]
+    fn docx_meta() {
+        use std::io::Write;
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut w = zip::ZipWriter::new(&mut buf);
+            w.start_file("docProps/core.xml", zip::write::SimpleFileOptions::default()).unwrap();
+            w.write_all(b"<cp:coreProperties><dc:creator>Ayse</dc:creator><cp:lastModifiedBy>Mehmet</cp:lastModifiedBy></cp:coreProperties>").unwrap();
+            w.finish().unwrap();
+        }
+        let v = super::document_meta(buf.get_ref());
+        assert_eq!(v["metaveri"]["creator"], "Ayse");
+        assert_eq!(v["metaveri"]["lastModifiedBy"], "Mehmet");
     }
 
     #[test]

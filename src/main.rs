@@ -36,6 +36,8 @@ enum Cmd {
     Email { hedef: String },
     /// Telefon numarasi ayristirma
     Phone { hedef: String },
+    /// Gecmis ve sizinti izleri: sertifika gecmisi, Wayback envanteri, GitHub
+    History { hedef: String },
     /// Medya/belge metaverisi ve ozetler
     Media { dosya: String },
     /// Pivot motoru + iliskilendirme analizi
@@ -50,6 +52,12 @@ enum Cmd {
         /// Kapsam disi alan adlarini da genislet
         #[arg(long)]
         genis: bool,
+    },
+    /// Kullanici adi imza veritabanini WhatsMyName'den guncelle
+    ImzaGuncelle,
+    /// Gorsellerdeki GPS konumlarini GeoJSON olarak disa aktar
+    Harita {
+        dosyalar: Vec<String>,
     },
     /// Vaka yonetimi
     Vaka {
@@ -114,6 +122,7 @@ async fn real_main() -> Result<()> {
         Cmd::Email { hedef } => Some(("email", hedef)),
         Cmd::Phone { hedef } => Some(("phone", hedef)),
         Cmd::Media { dosya } => Some(("media", dosya)),
+        Cmd::History { hedef } => Some(("history", hedef)),
         _ => None,
     };
     if let Some((m, t)) = simple {
@@ -169,6 +178,15 @@ async fn real_main() -> Result<()> {
             }
         },
         Cmd::Serve { port } => server::serve(*port).await?,
+        Cmd::ImzaGuncelle => {
+            let n = modules::identity::update_db(&http).await?;
+            println!("{n} ek platform imzasi kaydedildi (~/.config/osint/sites.json)");
+        }
+        Cmd::Harita { dosyalar } => {
+            let v = modules::media::geojson(dosyalar);
+            print(&v);
+            save("harita", &dosyalar.join(","), &v)?;
+        }
         _ => unreachable!(),
     }
     Ok(())

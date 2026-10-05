@@ -295,9 +295,17 @@ impl<'a> Engine<'a> {
 
     async fn username(&self, u: &str) -> anyhow::Result<(Value, Children)> {
         let data = modules::identity::username(self.http, u).await?;
-        let c = data["hesaplar"].as_array().into_iter().flatten()
+        let mut c: Children = data["hesaplar"].as_array().into_iter().flatten()
             .filter_map(|a| Some((Kind::Account, format!("{}: {}", a["platform"].as_str()?, a["url"].as_str()?), "hesap".into())))
             .collect();
+        for a in data["hesaplar"].as_array().into_iter().flatten() {
+            for e in a["epostalar"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+                c.push((Kind::Email, e.to_string(), "profilde_eposta".into()));
+            }
+        }
+        for l in data["capraz_baglantilar"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            c.push((Kind::Account, l.to_string(), "profilde_baglanti".into()));
+        }
         Ok((data, c))
     }
 }

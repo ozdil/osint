@@ -58,11 +58,28 @@ impl Http {
         limit: usize,
         headers: &[(&str, &str)],
     ) -> Result<serde_json::Value> {
-        let mut req = self.client.get(url);
-        for (k, v) in headers {
-            req = req.header(*k, *v);
-        }
-        let resp = req.send().await.with_context(|| format!("Istek basarisiz: {url}"))?;
+        // Gecici hatalarda (429/502/503/504) ustel geri cekilmeyle en fazla 3 deneme.
+        let mut attempt = 0u32;
+        let resp = loop {
+            let mut req = self.client.get(url);
+            for (k, v) in headers {
+                req = req.header(*k, *v);
+            }
+            let r = req.send().await.with_context(|| format!("Istek basarisiz: {url}"))?;
+            let code = r.status().as_u16();
+            if attempt < 2 && matches!(code, 429 | 502 | 503 | 504) {
+                let wait = r
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok()?.parse::<u64>().ok())
+                    .unwrap_or(2u64 << attempt)
+                    .min(15);
+                tokio::time::sleep(Duration::from_secs(wait)).await;
+                attempt += 1;
+                continue;
+            }
+            break r;
+        };
         let status = resp.status();
         let body = read_limited(resp, limit).await?;
         if status.as_u16() == 404 {

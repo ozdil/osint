@@ -17,7 +17,10 @@ cargo build --release
 | `osint user kullanici` | Platform taramasi, varyasyon onerileri |
 | `osint email a@ornek.com` | MX, Gravatar, ucretsiz/gecici saglayici, HIBP (anahtar) |
 | `osint phone "+90 5xx..."` | E.164, ulke, hat tipi, arastirma baglantilari |
-| `osint media dosya.jpg` | EXIF/GPS, PDF metaverisi, ozetler, VirusTotal (anahtar) |
+| `osint media dosya.jpg` | EXIF/GPS, PDF ve DOCX/XLSX/PPTX metaverisi, ozetler, VirusTotal (anahtar) |
+| `osint history ornek.com` | Sertifika gecmisi, Wayback uc nokta/parametre envanteri, arsivden e-postalar, GitHub kod aramasi (token) |
+| `osint harita a.jpg b.jpg` | Gorsellerdeki GPS konumlarini GeoJSON olarak verir |
+| `osint imza-guncelle` | WhatsMyName veritabanini ekler (700'u askin platform) |
 
 ## Pivot ve iliskilendirme
 ```
