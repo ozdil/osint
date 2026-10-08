@@ -49,7 +49,7 @@ fn body<T: serde::de::DeserializeOwned>(b: &Bytes) -> Result<T, Response> {
 fn is_local(v: &str) -> bool {
     let h = v.trim_start_matches("http://").trim_start_matches("https://").split('/').next().unwrap_or("");
     let host = if h.starts_with('[') { h.split(']').next().map(|x| format!("{x}]")).unwrap_or_default() } else { h.split(':').next().unwrap_or("").to_string() };
-    matches!(host.as_str(), "127.0.0.1" | "localhost" | "[::1]" | "osint.oznaozdil.com" | "oznaozdil.com")
+    matches!(host.as_str(), "127.0.0.1" | "localhost" | "[::1]" | "osint.ozanozdil.com" | "ozanozdil.com")
 }
 
 fn is_local_request(h: &axum::http::HeaderMap) -> bool {
@@ -198,8 +198,8 @@ mod tests {
         assert!(super::is_local("127.0.0.1:8787"));
         assert!(super::is_local("http://localhost:8787"));
         assert!(super::is_local("[::1]:8787"));
-        assert!(super::is_local("osint.oznaozdil.com"));
-        assert!(super::is_local("https://osint.oznaozdil.com:443"));
+        assert!(super::is_local("osint.ozanozdil.com"));
+        assert!(super::is_local("https://osint.ozanozdil.com:443"));
         assert!(!super::is_local("evil.com"));
         assert!(!super::is_local("https://127.0.0.1.evil.com"));
         assert!(!super::is_local("http://localhost.evil.com:8787"));

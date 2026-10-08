@@ -74,9 +74,9 @@ Open `http://localhost:8787` in any modern desktop or mobile browser.
 
 ---
 
-## Production Deployment: Domain Setup (`osint.oznaozdil.com`)
+## Production Deployment: Domain Setup (`osint.ozanozdil.com`)
 
-To host the platform behind a custom domain like `osint.oznaozdil.com`, you can use either Cloudflare Tunnels (recommended, zero-open-ports) or Nginx/Caddy reverse proxy.
+To host the platform behind a custom domain like `osint.ozanozdil.com`, you can use either Cloudflare Tunnels (recommended, zero-open-ports) or Nginx/Caddy reverse proxy.
 
 ### A. Cloudflare Tunnel (Zero Trust)
 
@@ -98,14 +98,14 @@ To host the platform behind a custom domain like `osint.oznaozdil.com`, you can 
    credentials-file: /home/ozdil/.cloudflared/<TUNNEL-UUID>.json
 
    ingress:
-     - hostname: osint.oznaozdil.com
+     - hostname: osint.ozanozdil.com
        service: http://127.0.0.1:8787
      - service: http_status:404
    ```
 
 4. Route DNS and start the tunnel service:
    ```bash
-   cloudflared tunnel route dns osint-tunnel osint.oznaozdil.com
+   cloudflared tunnel route dns osint-tunnel osint.ozanozdil.com
    cloudflared tunnel run osint-tunnel
    ```
 
@@ -113,7 +113,7 @@ To host the platform behind a custom domain like `osint.oznaozdil.com`, you can 
 
 ```nginx
 server {
-    server_name osint.oznaozdil.com;
+    server_name osint.ozanozdil.com;
 
     location / {
         proxy_pass http://127.0.0.1:8787;
@@ -130,7 +130,7 @@ server {
 
 Enable HTTPS via Certbot:
 ```bash
-sudo certbot --nginx -d osint.oznaozdil.com
+sudo certbot --nginx -d osint.ozanozdil.com
 ```
 
 ### C. Systemd Background Service
