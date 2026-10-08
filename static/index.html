@@ -7,7 +7,8 @@
 :root{--bg:#0f1115;--pn:#171a21;--bd:#2a2f3a;--fg:#d8dee9;--mut:#8a93a6;--ac:#7aa2f7;--ok:#9ece6a;--wr:#e0af68;--er:#f7768e}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:"JetBrainsMono Nerd Font","JetBrains Mono",monospace;font-size:12pt}
-header{padding:12px 20px;border-bottom:1px solid var(--bd);display:flex;gap:16px;align-items:center}
+header{padding:12px 20px;border-bottom:1px solid var(--bd);display:flex;gap:16px;align-items:center;justify-content:space-between}
+.hdr-left{display:flex;gap:16px;align-items:center}
 h1{font-size:18pt;margin:0;font-weight:600} h2{font-size:14pt;font-weight:600;margin:0 0 10px}
 main{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px}
 .pn{background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:16px}
@@ -17,109 +18,652 @@ button{background:var(--ac);color:#0b0d11;border:0;cursor:pointer;margin-top:10p
 button.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
 .row{display:flex;gap:8px} .row>*{flex:1}
 pre{background:#0b0d11;border:1px solid var(--bd);padding:10px;overflow:auto;max-height:60vh;font-size:10pt;margin:0}
-canvas{width:100%;height:520px;background:#0b0d11;border:1px solid var(--bd);border-radius:4px}
+.cv-container{position:relative;width:100%;height:540px;background:#0b0d11;border:1px solid var(--bd);border-radius:4px;overflow:hidden}
+canvas{width:100%;height:100%;display:block;cursor:grab}
+canvas:active{cursor:grabbing}
+.cv-toolbar{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:10}
+.cv-toolbar button{width:36px;height:36px;padding:0;margin:0;display:flex;align-items:center;justify-content:center;background:#171a21cc;color:var(--fg);border:1px solid var(--bd);border-radius:4px;font-size:12pt;backdrop-filter:blur(4px)}
+.cv-toolbar button:hover{background:var(--ac);color:#0b0d11}
+.cv-stats{position:absolute;bottom:10px;left:10px;font-size:9pt;color:var(--mut);background:#0b0d11cc;padding:4px 8px;border-radius:4px;border:1px solid var(--bd);pointer-events:none}
 .tabs{display:flex;gap:6px;margin-bottom:10px} .tabs button{width:auto;margin:0;padding:5px 12px}
 .tabs button.on{background:var(--ac);color:#0b0d11}
 table{width:100%;border-collapse:collapse;font-size:11pt} td,th{border-bottom:1px solid var(--bd);padding:5px;text-align:left}
-.mut{color:var(--mut);font-size:10pt} .st{font-size:10pt;margin-top:8px;min-height:1.2em}
-.lg span{display:inline-block;margin-right:10px;font-size:10pt}
+.mut{color:var(--mut);font-size:10pt} .st{font-size:10pt;margin-top:8px;min-height:1.2em;display:flex;align-items:center;gap:8px}
+.lg{margin-top:8px} .lg span{display:inline-block;margin-right:10px;font-size:9pt}
+.lang-btn{width:auto;margin:0;padding:4px 10px;font-size:10pt;font-weight:600;background:transparent;color:var(--mut);border:1px solid var(--bd)}
+.lang-btn.active{background:var(--ac);color:#0b0d11;border-color:var(--ac)}
+.spinner{display:none;width:14px;height:14px;border:2px solid var(--bd);border-top:2px solid var(--ac);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.node-tooltip{position:absolute;display:none;background:#171a21ee;border:1px solid var(--ac);color:var(--fg);padding:6px 10px;border-radius:4px;font-size:9.5pt;pointer-events:none;z-index:20;max-width:320px;word-break:break-all;box-shadow:0 4px 12px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
-<header><h1>OSINT Platformu</h1><span class="mut">Pasif acik kaynak istihbarat - yerel panel</span></header>
+<header>
+  <div class="hdr-left">
+    <h1 data-i18n="app_title">OSINT Platformu</h1>
+    <span class="mut" data-i18n="app_sub">Pasif acik kaynak istihbarat - yerel panel</span>
+  </div>
+  <div style="display:flex;gap:4px">
+    <button id="btnTR" class="lang-btn active" onclick="setLang('tr')">TR</button>
+    <button id="btnEN" class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+</header>
 <main>
 <aside>
   <div class="pn">
-    <h2>Vaka</h2>
-    <select id="vaka" aria-label="Aktif vaka"><option value="">(kaydetme)</option></select>
-    <div class="row"><input id="vakaAd" aria-label="Yeni vaka adi" placeholder="Yeni vaka adi"><button class="sec" onclick="yeniVaka()" style="flex:0 0 80px">Ekle</button></div>
-    <div class="row"><button class="sec" onclick="rapor('html')">HTML Rapor</button><button class="sec" onclick="rapor('md')">Markdown</button></div>
+    <h2 data-i18n="case_h2">Vaka</h2>
+    <select id="vaka" aria-label="Aktif vaka"><option value="" data-i18n="no_save">(kaydetme)</option></select>
+    <div class="row"><input id="vakaAd" aria-label="Yeni vaka adi" placeholder="Yeni vaka adi" data-i18n-ph="case_name_ph"><button class="sec" onclick="yeniVaka()" style="flex:0 0 80px" data-i18n="btn_add">Ekle</button></div>
+    <div class="row"><button class="sec" onclick="rapor('html')" data-i18n="btn_html_rep">HTML Rapor</button><button class="sec" onclick="rapor('md')" data-i18n="btn_md_rep">Markdown</button></div>
   </div>
   <div class="pn">
-    <h2>Tekil Sorgu</h2>
-    <label for="modul">Modul</label>
+    <h2 data-i18n="single_query_h2">Tekil Sorgu</h2>
+    <label for="modul" data-i18n="lbl_module">Modul</label>
     <select id="modul">
-      <option value="domain">Alan adi</option><option value="ip">IP adresi</option><option value="web">Web sitesi</option>
-      <option value="user">Kullanici adi</option><option value="email">E-posta</option><option value="phone">Telefon</option><option value="history">Gecmis ve sizinti</option>
+      <option value="domain" data-i18n="opt_domain">Alan adi</option>
+      <option value="ip" data-i18n="opt_ip">IP adresi</option>
+      <option value="web" data-i18n="opt_web">Web sitesi</option>
+      <option value="user" data-i18n="opt_user">Kullanici adi</option>
+      <option value="email" data-i18n="opt_email">E-posta</option>
+      <option value="phone" data-i18n="opt_phone">Telefon</option>
+      <option value="history" data-i18n="opt_history">Gecmis ve sizinti</option>
     </select>
-    <label for="hedef">Hedef</label><input id="hedef" placeholder="ornek.com">
-    <button onclick="calistir()">Sorgula</button>
+    <label for="hedef" data-i18n="lbl_target">Hedef</label><input id="hedef" placeholder="ornek.com">
+    <button id="btnQuery" onclick="calistir()" data-i18n="btn_query">Sorgula</button>
   </div>
   <div class="pn">
-    <h2>Pivot Analizi</h2>
-    <label for="ptur">Tohum turu</label>
-    <select id="ptur"><option value="domain">Alan adi</option><option value="url">URL</option><option value="ip">IP</option><option value="email">E-posta</option><option value="user">Kullanici adi</option></select>
-    <label for="phedef">Tohum</label><input id="phedef" placeholder="ornek.com">
-    <div class="row"><div><label for="pder">Derinlik</label><input id="pder" type="number" value="2" min="1" max="4"></div>
-    <div><label for="pmax">Azami dugum</label><input id="pmax" type="number" value="150" min="10" max="500"></div></div>
-    <label><input id="pgenis" type="checkbox" style="width:auto"> Kapsam disini da genislet</label>
-    <button onclick="pivotla()">Pivotu Baslat</button>
+    <h2 data-i18n="pivot_h2">Pivot Analizi</h2>
+    <label for="ptur" data-i18n="lbl_seed_type">Tohum turu</label>
+    <select id="ptur">
+      <option value="domain" data-i18n="opt_domain">Alan adi</option>
+      <option value="url">URL</option>
+      <option value="ip" data-i18n="opt_ip">IP</option>
+      <option value="email" data-i18n="opt_email">E-posta</option>
+      <option value="user" data-i18n="opt_user">Kullanici adi</option>
+    </select>
+    <label for="phedef" data-i18n="lbl_seed">Tohum</label><input id="phedef" placeholder="ornek.com">
+    <div class="row">
+      <div><label for="pder" data-i18n="lbl_depth">Derinlik</label><input id="pder" type="number" value="2" min="1" max="4"></div>
+      <div><label for="pmax" data-i18n="lbl_max_nodes">Azami dugum</label><input id="pmax" type="number" value="150" min="10" max="500"></div>
+    </div>
+    <label style="margin-top:8px"><input id="pgenis" type="checkbox" style="width:auto"> <span data-i18n="chk_wide">Kapsam disini da genislet</span></label>
+    <button id="btnPivot" onclick="pivotla()" data-i18n="btn_pivot">Pivotu Baslat</button>
   </div>
-  <div class="st" id="st"></div>
+  <div class="st" id="stBox">
+    <div class="spinner" id="spin"></div>
+    <span id="st"></span>
+  </div>
 </aside>
 <section>
   <div class="pn">
-    <div class="tabs"><button class="on" data-t="g">Grafik</button><button data-t="a">Iliskilendirme</button><button data-t="j">Ham Veri</button></div>
-    <div id="t-g"><canvas id="cv"></canvas><div class="lg" id="lg"></div></div>
+    <div class="tabs">
+      <button class="on" data-t="g" data-i18n="tab_graph">Grafik</button>
+      <button data-t="a" data-i18n="tab_corr">Iliskilendirme</button>
+      <button data-t="j" data-i18n="tab_raw">Ham Veri</button>
+    </div>
+    <div id="t-g">
+      <div class="cv-container" id="cvBox">
+        <canvas id="cv"></canvas>
+        <div class="cv-toolbar">
+          <button onclick="zoomBtn(1.25)" title="Yaklas (+)">+</button>
+          <button onclick="zoomBtn(0.8)" title="Uzaklas (-)">-</button>
+          <button onclick="zoomFit()" title="Merkeze Sigdir (Reset)">[ ]</button>
+        </div>
+        <div class="cv-stats" id="cvStats">100% | 0 dugum</div>
+        <div class="node-tooltip" id="tip"></div>
+      </div>
+      <div class="lg" id="lg"></div>
+    </div>
     <div id="t-a" hidden></div>
     <div id="t-j" hidden><pre id="out">Sonuc burada gorunecek.</pre></div>
   </div>
 </section>
 </main>
 <script>
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const st=(m,c)=>{$("st").textContent=m;$("st").style.color=c||"var(--mut)"};
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
-  ["g","a","j"].forEach(t=>$("t-"+t).hidden=t!==b.dataset.t);
-  if(b.dataset.t==="g"&&sonGrafik)ciz(sonGrafik);
-});
-let sonGrafik=null;
-addEventListener("resize",()=>{if(sonGrafik&&!$("t-g").hidden)ciz(sonGrafik)});
-async function api(u,o){const r=await fetch(u,o);const t=await r.text();let j;try{j=JSON.parse(t)}catch{j=t}if(!r.ok)throw new Error(j.hata||t);return j}
-const post=(u,b)=>api(u,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(b)});
-const vaka=()=>$("vaka").value?Number($("vaka").value):null;
-async function vakalar(){const l=await api("/api/vakalar");const s=$("vaka"),cur=s.value;
-  s.innerHTML='<option value="">(kaydetme)</option>'+l.map(v=>`<option value="${v.id}">#${v.id} ${esc(v.ad)} (${v.bulgu_sayisi})</option>`).join("");s.value=cur}
-async function yeniVaka(){try{const r=await post("/api/vakalar",{ad:$("vakaAd").value});await vakalar();$("vaka").value=r.id;$("vakaAd").value=""}catch(e){st(e.message,"var(--er)")}}
-function rapor(b){if(!vaka())return st("Once bir vaka secin","var(--wr)");window.open(`/api/vakalar/${vaka()}/rapor?bicim=${b}`)}
-async function calistir(){st("Sorgulaniyor...");try{const v=await post("/api/calistir",{modul:$("modul").value,hedef:$("hedef").value,vaka:vaka()});
-  $("out").textContent=JSON.stringify(v,null,2);document.querySelector('[data-t=j]').click();st("Tamamlandi","var(--ok)");await vakalar()}catch(e){st(e.message,"var(--er)")}}
-async function pivotla(){st("Pivot calisiyor; derinlige gore birkac dakika surebilir...");const t0=Date.now();
-  try{const v=await post("/api/pivot",{tur:$("ptur").value,hedef:$("phedef").value,derinlik:+$("pder").value,max_dugum:+$("pmax").value,genis:$("pgenis").checked,vaka:vaka()});
-  $("out").textContent=JSON.stringify(v,null,2);sonGrafik=v.grafik;analiz(v.analiz);document.querySelector('[data-t=g]').click();
-  st(`Tamamlandi: ${v.analiz.ozet.dugum} dugum, ${v.analiz.ozet.kenar} kenar (${((Date.now()-t0)/1000).toFixed(1)} sn)`,"var(--ok)");await vakalar()}catch(e){st(e.message,"var(--er)")}}
-function analiz(a){
-  const c=(a.merkezi_dugumler||[]).map(x=>`<tr><td>${esc(x.tur)}</td><td><b>${esc(x.deger)}</b></td><td>${x.derece}</td><td>${x.kapsamda?'Kapsamda':'Harici'}</td></tr>`).join("")||'<tr><td colspan=4 class=mut>Veri yok</td></tr>';
-  const k=a.kumeler.map(c=>`<tr><td>${esc(c.gosterge_turu)}</td><td>${esc(c.gosterge)}</td><td>${c.agirlik}</td><td>${c.varliklar.map(esc).join("<br>")}</td><td class=mut>${esc(c.yorum)}</td></tr>`).join("")||'<tr><td colspan=5 class=mut>Ortak gosterge bulunamadi</td></tr>';
-  const l=a.varlik_baglantilari.map(x=>`<tr><td>${esc(x.a)}</td><td>${esc(x.b)}</td><td>${x.skor}</td><td>${esc(x.guven)}</td></tr>`).join("");
-  const p=a.harici_pivotlar.map(x=>`<tr><td>${esc(x.tur)}</td><td>${esc(x.deger)}</td><td>${Object.entries(x.baglantilar||{}).map(([n,u])=>u.startsWith("http")?`<a style="color:var(--ac)" target=_blank rel=noopener href="${esc(u)}">${esc(n)}</a>`:`${esc(n)}: ${esc(u)}`).join(" ")}</td></tr>`).join("");
-  $("t-a").innerHTML=`<h2>Kritik Merkezi Düğümler (Derece Merkeziyeti)</h2><table><tr><th>Tür</th><th>Değer</th><th>Bağlantı Sayısı</th><th>Kapsam</th></tr>${c}</table>
-  <h2 style="margin-top:18px">Ortak Gösterge Kümeleri</h2><table><tr><th>Tür</th><th>Gösterge</th><th>Ağırlık</th><th>Varlıklar</th><th>Yorum</th></tr>${k}</table>
-  <h2 style="margin-top:18px">Varlık Bağlantıları</h2><table><tr><th>A</th><th>B</th><th>Skor</th><th>Güven</th></tr>${l}</table>
-  <h2 style="margin-top:18px">Harici Pivotlar</h2><table><tr><th>Tür</th><th>Değer</th><th>Bağlantılar</th></tr>${p}</table>`}
-
-const RENK={domain:"#7aa2f7",ip:"#9ece6a",url:"#2ac3de",email:"#e0af68",username:"#bb9af7",account:"#c0caf5",asn:"#73daca",tracking_id:"#f7768e",favicon_hash:"#ff9e64",nameserver:"#565f89",registrar:"#414868",technology:"#3b4261"};
-function ciz(g){
-  const cv=$("cv");if(!cv.clientWidth)return;
-  const ctx=cv.getContext("2d"),W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=cv.clientHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-  const w=W/devicePixelRatio,h=H/devicePixelRatio,N=Object.values(g.dugumler),idx={};
-  N.forEach((n,i)=>{idx[n.id]=n;n.x=w/2+Math.cos(i)*(50+n.derinlik*120);n.y=h/2+Math.sin(i)*(50+n.derinlik*120);n.vx=n.vy=0});
-  const E=g.kenarlar.filter(e=>idx[e.kaynak]&&idx[e.hedef]);
-  for(let it=0;it<300;it++){
-    for(const a of N)for(const b of N){if(a===b)continue;const dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+.01,f=900/d2;a.vx+=dx*f/Math.sqrt(d2);a.vy+=dy*f/Math.sqrt(d2)}
-    for(const e of E){const a=idx[e.kaynak],b=idx[e.hedef],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,f=(d-70)*.02;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}
-    for(const n of N){n.vx+=(w/2-n.x)*.002;n.vy+=(h/2-n.y)*.002;n.x+=n.vx*.5;n.y+=n.vy*.5;n.vx*=.6;n.vy*=.6;n.x=Math.max(10,Math.min(w-10,n.x));n.y=Math.max(10,Math.min(h-10,n.y))}
+const I18N = {
+  tr: {
+    app_title: "OSINT Platformu",
+    app_sub: "Pasif acik kaynak istihbarat - yerel panel",
+    case_h2: "Vaka",
+    no_save: "(kaydetme)",
+    case_name_ph: "Yeni vaka adi",
+    btn_add: "Ekle",
+    btn_html_rep: "HTML Rapor",
+    btn_md_rep: "Markdown",
+    single_query_h2: "Tekil Sorgu",
+    lbl_module: "Modul",
+    opt_domain: "Alan adi",
+    opt_ip: "IP adresi",
+    opt_web: "Web sitesi",
+    opt_user: "Kullanici adi",
+    opt_email: "E-posta",
+    opt_phone: "Telefon",
+    opt_history: "Gecmis ve sizinti",
+    lbl_target: "Hedef",
+    btn_query: "Sorgula",
+    pivot_h2: "Pivot Analizi",
+    lbl_seed_type: "Tohum turu",
+    lbl_seed: "Tohum",
+    lbl_depth: "Derinlik",
+    lbl_max_nodes: "Azami dugum",
+    chk_wide: "Kapsam disini da genislet",
+    btn_pivot: "Pivotu Baslat",
+    tab_graph: "Grafik",
+    tab_corr: "Iliskilendirme",
+    tab_raw: "Ham Veri",
+    st_querying: "Sorgulaniyor...",
+    st_pivoting: "Pivot analizi yurutuluyor, lutfen bekleyin...",
+    st_done: "Tamamlandi",
+    st_select_case: "Once bir vaka secin",
+    raw_default: "Sonuc burada gorunecek.",
+    th_type: "Tur",
+    th_val: "Deger",
+    th_deg: "Baglanti Sayisi",
+    th_scope: "Kapsam",
+    th_indicator: "Gosterge",
+    th_weight: "Agirlik",
+    th_entities: "Varliklar",
+    th_comment: "Yorum",
+    th_score: "Skor",
+    th_conf: "Guven",
+    th_links: "Baglantilar",
+    in_scope: "Kapsamda",
+    out_scope: "Harici",
+    no_cluster: "Ortak gosterge bulunamadi",
+    no_data: "Veri yok",
+    h2_central: "Kritik Merkezi Dugumler (Derece Merkeziyeti)",
+    h2_clusters: "Ortak Gosterge Kumeleri",
+    h2_links: "Varlik Baglantilari",
+    h2_pivots: "Harici Pivotlar"
+  },
+  en: {
+    app_title: "OSINT Platform",
+    app_sub: "Passive open-source intelligence - local panel",
+    case_h2: "Case Management",
+    no_save: "(do not save)",
+    case_name_ph: "New case name",
+    btn_add: "Add",
+    btn_html_rep: "HTML Report",
+    btn_md_rep: "Markdown",
+    single_query_h2: "Single Query",
+    lbl_module: "Module",
+    opt_domain: "Domain name",
+    opt_ip: "IP address",
+    opt_web: "Website",
+    opt_user: "Username",
+    opt_email: "Email address",
+    opt_phone: "Phone number",
+    opt_history: "History & Leaks",
+    lbl_target: "Target",
+    btn_query: "Investigate",
+    pivot_h2: "Pivot Graph Analysis",
+    lbl_seed_type: "Seed type",
+    lbl_seed: "Seed target",
+    lbl_depth: "Depth",
+    lbl_max_nodes: "Max nodes",
+    chk_wide: "Expand out-of-scope targets",
+    btn_pivot: "Start Pivot Search",
+    tab_graph: "Graph",
+    tab_corr: "Correlation",
+    tab_raw: "Raw Data",
+    st_querying: "Investigating target...",
+    st_pivoting: "Pivot graph search in progress, please wait...",
+    st_done: "Completed",
+    st_select_case: "Select a case first",
+    raw_default: "Results will appear here.",
+    th_type: "Type",
+    th_val: "Value",
+    th_deg: "Connections",
+    th_scope: "Scope",
+    th_indicator: "Indicator",
+    th_weight: "Weight",
+    th_entities: "Entities",
+    th_comment: "Assessment",
+    th_score: "Score",
+    th_conf: "Confidence",
+    th_links: "Pivot Links",
+    in_scope: "In-Scope",
+    out_scope: "External",
+    no_cluster: "No shared indicators found",
+    no_data: "No data available",
+    h2_central: "Critical Central Nodes (Degree Centrality)",
+    h2_clusters: "Shared Indicator Clusters",
+    h2_links: "Entity Linkages",
+    h2_pivots: "External Pivots"
   }
-  ctx.clearRect(0,0,w,h);ctx.strokeStyle="#2a2f3a";ctx.lineWidth=1;
-  for(const e of E){const a=idx[e.kaynak],b=idx[e.hedef];ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
-  ctx.font='10px "JetBrainsMono Nerd Font", monospace';
-  for(const n of N){ctx.fillStyle=RENK[n.tur]||"#888";ctx.beginPath();ctx.arc(n.x,n.y,n.derinlik===0?8:n.kapsamda?5:3,0,7);ctx.fill();
-    if(N.length<80||n.derinlik<2){ctx.fillStyle="#a9b1d6";ctx.fillText(n.deger.slice(0,32),n.x+7,n.y+3)}}
-  $("lg").innerHTML=Object.entries(RENK).map(([k,c])=>`<span><span style="color:${c}">\u25cf</span> ${k}</span>`).join("");
+};
+
+let CUR_LANG = localStorage.getItem("osint_lang") || "tr";
+
+function setLang(l) {
+  CUR_LANG = l;
+  localStorage.setItem("osint_lang", l);
+  document.getElementById("btnTR").classList.toggle("active", l === "tr");
+  document.getElementById("btnEN").classList.toggle("active", l === "en");
+  document.documentElement.lang = l;
+  const dict = I18N[l];
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const k = el.dataset.i18n;
+    if (dict[k]) el.textContent = dict[k];
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const k = el.dataset.i18nPh;
+    if (dict[k]) el.placeholder = dict[k];
+  });
+  if (sonAnaliz) renderAnaliz(sonAnaliz);
 }
-vakalar().catch(()=>{});
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function setBusy(busy, msg, color) {
+  const spin = $("spin");
+  const stText = $("st");
+  spin.style.display = busy ? "inline-block" : "none";
+  stText.textContent = msg;
+  stText.style.color = color || (busy ? "var(--ac)" : "var(--mut)");
+  if (busy) {
+    stText.classList.add("pulse");
+    $("btnQuery").disabled = true;
+    $("btnPivot").disabled = true;
+  } else {
+    stText.classList.remove("pulse");
+    $("btnQuery").disabled = false;
+    $("btnPivot").disabled = false;
+  }
+}
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  ["g", "a", "j"].forEach(t => $("t-" + t).hidden = t !== b.dataset.t);
+  if (b.dataset.t === "g" && sonGrafik) {
+    ciz(sonGrafik);
+  }
+});
+
+let sonGrafik = null;
+let sonAnaliz = null;
+
+// Kamera ve Gorunum Donusumleri (Pan & Zoom)
+let zoom = 1;
+let panX = 0;
+let panY = 0;
+let isDragging = false;
+let startDragX = 0;
+let startDragY = 0;
+let hoveredNode = null;
+
+addEventListener("resize", () => {
+  if (sonGrafik && !$("t-g").hidden) ciz(sonGrafik);
+});
+
+async function api(u, o) {
+  const r = await fetch(u, o);
+  const t = await r.text();
+  let j;
+  try { j = JSON.parse(t); } catch { j = t; }
+  if (!r.ok) throw new Error(j.hata || t);
+  return j;
+}
+
+const post = (u, b) => api(u, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(b)
+});
+
+const vaka = () => $("vaka").value ? Number($("vaka").value) : null;
+
+async function vakalar() {
+  const l = await api("/api/vakalar");
+  const s = $("vaka"), cur = s.value;
+  const noSave = I18N[CUR_LANG].no_save;
+  s.innerHTML = `<option value="">${noSave}</option>` + l.map(v => `<option value="${v.id}">#${v.id} ${esc(v.ad)} (${v.bulgu_sayisi})</option>`).join("");
+  s.value = cur;
+}
+
+async function yeniVaka() {
+  try {
+    const r = await post("/api/vakalar", { ad: $("vakaAd").value });
+    await vakalar();
+    $("vaka").value = r.id;
+    $("vakaAd").value = "";
+  } catch (e) {
+    setBusy(false, e.message, "var(--er)");
+  }
+}
+
+function rapor(b) {
+  if (!vaka()) return setBusy(false, I18N[CUR_LANG].st_select_case, "var(--wr)");
+  window.open(`/api/vakalar/${vaka()}/rapor?bicim=${b}`);
+}
+
+async function calistir() {
+  setBusy(true, I18N[CUR_LANG].st_querying);
+  try {
+    const v = await post("/api/calistir", { modul: $("modul").value, hedef: $("hedef").value, vaka: vaka() });
+    $("out").textContent = JSON.stringify(v, null, 2);
+    document.querySelector('[data-t=j]').click();
+    setBusy(false, I18N[CUR_LANG].st_done, "var(--ok)");
+    await vakalar();
+  } catch (e) {
+    setBusy(false, e.message, "var(--er)");
+  }
+}
+
+async function pivotla() {
+  setBusy(true, I18N[CUR_LANG].st_pivoting);
+  const t0 = Date.now();
+  try {
+    const v = await post("/api/pivot", {
+      tur: $("ptur").value,
+      hedef: $("phedef").value,
+      derinlik: +$("pder").value,
+      max_dugum: +$("pmax").value,
+      genis: $("pgenis").checked,
+      vaka: vaka()
+    });
+    $("out").textContent = JSON.stringify(v, null, 2);
+    sonGrafik = v.grafik;
+    sonAnaliz = v.analiz;
+    renderAnaliz(v.analiz);
+    zoomFit();
+    document.querySelector('[data-t=g]').click();
+    const dur = ((Date.now() - t0) / 1000).toFixed(1);
+    const msg = `${I18N[CUR_LANG].st_done}: ${v.analiz.ozet.dugum} ${CUR_LANG==='tr'?'dugum':'nodes'}, ${v.analiz.ozet.kenar} ${CUR_LANG==='tr'?'kenar':'edges'} (${dur}s)`;
+    setBusy(false, msg, "var(--ok)");
+    await vakalar();
+  } catch (e) {
+    setBusy(false, e.message, "var(--er)");
+  }
+}
+
+function renderAnaliz(a) {
+  const d = I18N[CUR_LANG];
+  const c = (a.merkezi_dugumler || []).map(x =>
+    `<tr><td>${esc(x.tur)}</td><td><b>${esc(x.deger)}</b></td><td>${x.derece}</td><td>${x.kapsamda ? d.in_scope : d.out_scope}</td></tr>`
+  ).join("") || `<tr><td colspan=4 class=mut>${d.no_data}</td></tr>`;
+
+  const k = a.kumeler.map(cl =>
+    `<tr><td>${esc(cl.gosterge_turu)}</td><td>${esc(cl.gosterge)}</td><td>${cl.agirlik}</td><td>${cl.varliklar.map(esc).join("<br>")}</td><td class=mut>${esc(cl.yorum)}</td></tr>`
+  ).join("") || `<tr><td colspan=5 class=mut>${d.no_cluster}</td></tr>`;
+
+  const l = a.varlik_baglantilari.map(x =>
+    `<tr><td>${esc(x.a)}</td><td>${esc(x.b)}</td><td>${x.skor}</td><td>${esc(x.guven)}</td></tr>`
+  ).join("");
+
+  const p = a.harici_pivotlar.map(x =>
+    `<tr><td>${esc(x.tur)}</td><td>${esc(x.deger)}</td><td>${Object.entries(x.baglantilar || {}).map(([n, u]) => u.startsWith("http") ? `<a style="color:var(--ac)" target=_blank rel=noopener href="${esc(u)}">${esc(n)}</a>` : `${esc(n)}: ${esc(u)}`).join(" ")}</td></tr>`
+  ).join("");
+
+  $("t-a").innerHTML = `<h2>${d.h2_central}</h2><table><tr><th>${d.th_type}</th><th>${d.th_val}</th><th>${d.th_deg}</th><th>${d.th_scope}</th></tr>${c}</table>
+  <h2 style="margin-top:18px">${d.h2_clusters}</h2><table><tr><th>${d.th_type}</th><th>${d.th_indicator}</th><th>${d.th_weight}</th><th>${d.th_entities}</th><th>${d.th_comment}</th></tr>${k}</table>
+  <h2 style="margin-top:18px">${d.h2_links}</h2><table><tr><th>A</th><th>B</th><th>${d.th_score}</th><th>${d.th_conf}</th></tr>${l}</table>
+  <h2 style="margin-top:18px">${d.h2_pivots}</h2><table><tr><th>${d.th_type}</th><th>${d.th_val}</th><th>${d.th_links}</th></tr>${p}</table>`;
+}
+
+const RENK = {
+  domain: "#7aa2f7",
+  ip: "#9ece6a",
+  url: "#2ac3de",
+  email: "#e0af68",
+  username: "#bb9af7",
+  account: "#c0caf5",
+  asn: "#73daca",
+  tracking_id: "#f7768e",
+  favicon_hash: "#ff9e64",
+  nameserver: "#565f89",
+  registrar: "#414868",
+  technology: "#3b4261"
+};
+
+function zoomBtn(f) {
+  const cv = $("cv");
+  const w = cv.clientWidth, h = cv.clientHeight;
+  const newZoom = Math.max(0.1, Math.min(8, zoom * f));
+  panX = w / 2 - (w / 2 - panX) * (newZoom / zoom);
+  panY = h / 2 - (h / 2 - panY) * (newZoom / zoom);
+  zoom = newZoom;
+  ciz(sonGrafik);
+}
+
+function zoomFit() {
+  if (!sonGrafik) return;
+  const N = Object.values(sonGrafik.dugumler);
+  if (!N.length) return;
+  const cv = $("cv");
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  N.forEach(n => {
+    if (n.x !== undefined) {
+      minX = Math.min(minX, n.x);
+      maxX = Math.max(maxX, n.x);
+      minY = Math.min(minY, n.y);
+      maxY = Math.max(maxY, n.y);
+    }
+  });
+  if (minX === Infinity) return;
+  const bw = (maxX - minX) || 100;
+  const bh = (maxY - minY) || 100;
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const pad = 80;
+  zoom = Math.min((w - pad) / bw, (h - pad) / bh, 2.5);
+  zoom = Math.max(0.2, zoom);
+  panX = w / 2 - cx * zoom;
+  panY = h / 2 - cy * zoom;
+  ciz(sonGrafik);
+}
+
+function initLayout(g, w, h) {
+  const N = Object.values(g.dugumler), idx = {};
+  N.forEach((n, i) => {
+    idx[n.id] = n;
+    if (n.x === undefined) {
+      n.x = w / 2 + Math.cos(i) * (60 + n.derinlik * 140);
+      n.y = h / 2 + Math.sin(i) * (60 + n.derinlik * 140);
+      n.vx = 0; n.vy = 0;
+    }
+  });
+  const E = g.kenarlar.filter(e => idx[e.kaynak] && idx[e.hedef]);
+  for (let it = 0; it < 320; it++) {
+    for (const a of N) {
+      for (const b of N) {
+        if (a === b) continue;
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d2 = dx * dx + dy * dy + 0.01;
+        const f = 1200 / d2;
+        const dist = Math.sqrt(d2);
+        a.vx += dx * f / dist;
+        a.vy += dy * f / dist;
+      }
+    }
+    for (const e of E) {
+      const a = idx[e.kaynak], b = idx[e.hedef];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const f = (d - 85) * 0.025;
+      a.vx += dx / d * f; a.vy += dy / d * f;
+      b.vx -= dx / d * f; b.vy -= dy / d * f;
+    }
+    for (const n of N) {
+      n.vx += (w / 2 - n.x) * 0.002;
+      n.vy += (h / 2 - n.y) * 0.002;
+      n.x += n.vx * 0.5;
+      n.y += n.vy * 0.5;
+      n.vx *= 0.6;
+      n.vy *= 0.6;
+    }
+  }
+}
+
+function ciz(g) {
+  const cv = $("cv");
+  if (!cv || !cv.clientWidth) return;
+  const ctx = cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr;
+  cv.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  if (!g) {
+    ctx.clearRect(0, 0, w, h);
+    return;
+  }
+
+  const N = Object.values(g.dugumler);
+  const first = N[0];
+  if (first && first.x === undefined) {
+    initLayout(g, w, h);
+    zoomFit();
+    return;
+  }
+
+  const idx = {};
+  N.forEach(n => idx[n.id] = n);
+  const E = g.kenarlar.filter(e => idx[e.kaynak] && idx[e.hedef]);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Dunya koordinatlarina donusum
+  ctx.save();
+  ctx.translate(panX, panY);
+  ctx.scale(zoom, zoom);
+
+  // Kenarlar
+  ctx.lineWidth = 1 / zoom;
+  for (const e of E) {
+    const a = idx[e.kaynak], b = idx[e.hedef];
+    const isConn = hoveredNode && (hoveredNode.id === a.id || hoveredNode.id === b.id);
+    ctx.strokeStyle = isConn ? "rgba(122,162,247,0.85)" : "#222733";
+    ctx.lineWidth = isConn ? (2 / zoom) : (1 / zoom);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  // Dugumler
+  ctx.font = '10px "JetBrainsMono Nerd Font", monospace';
+  for (const n of N) {
+    const isHov = hoveredNode && hoveredNode.id === n.id;
+    ctx.fillStyle = RENK[n.tur] || "#888";
+    ctx.beginPath();
+    const r = (n.derinlik === 0 ? 8 : (n.kapsamda ? 5 : 3)) * (isHov ? 1.6 : 1);
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (isHov) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2 / zoom;
+      ctx.stroke();
+    }
+
+    if (zoom >= 0.9 || isHov || N.length < 50 || n.derinlik === 0) {
+      ctx.fillStyle = isHov ? "#ffffff" : "#a9b1d6";
+      ctx.fillText(n.deger.slice(0, 36), n.x + r + 3, n.y + 3);
+    }
+  }
+
+  ctx.restore();
+
+  $("cvStats").textContent = `${Math.round(zoom * 100)}% | ${N.length} ${CUR_LANG==='tr'?'dugum':'nodes'}, ${E.length} ${CUR_LANG==='tr'?'kenar':'edges'}`;
+  $("lg").innerHTML = Object.entries(RENK).map(([k, c]) => `<span><span style="color:${c}">●</span> ${k}</span>`).join("");
+}
+
+// Canvas Etkilesimleri (Fare Surukleme, Tekerlek Zoom, Hover Tooltip)
+(function() {
+  const cv = $("cv");
+  const tip = $("tip");
+
+  cv.addEventListener("mousedown", e => {
+    if (e.button !== 0) return;
+    isDragging = true;
+    startDragX = e.clientX - panX;
+    startDragY = e.clientY - panY;
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  cv.addEventListener("mousemove", e => {
+    const rect = cv.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if (isDragging) {
+      panX = e.clientX - startDragX;
+      panY = e.clientY - startDragY;
+      tip.style.display = "none";
+      ciz(sonGrafik);
+      return;
+    }
+
+    if (!sonGrafik) return;
+
+    // Dunya koordinatlarinda arama
+    const worldX = (mouseX - panX) / zoom;
+    const worldY = (mouseY - panY) / zoom;
+
+    let hit = null;
+    let hitDist = Infinity;
+    const N = Object.values(sonGrafik.dugumler);
+    for (const n of N) {
+      const d = Math.hypot(n.x - worldX, n.y - worldY);
+      const hitRadius = (n.derinlik === 0 ? 12 : 8) / Math.min(1, zoom);
+      if (d < hitRadius && d < hitDist) {
+        hit = n;
+        hitDist = d;
+      }
+    }
+
+    if (hit !== hoveredNode) {
+      hoveredNode = hit;
+      ciz(sonGrafik);
+    }
+
+    if (hit) {
+      tip.style.display = "block";
+      tip.style.left = (mouseX + 15) + "px";
+      tip.style.top = (mouseY + 15) + "px";
+      const d = I18N[CUR_LANG];
+      tip.innerHTML = `<b>${esc(hit.tur)}</b><br>${esc(hit.deger)}<br><span class="mut">${d.lbl_depth}: ${hit.derinlik} | ${hit.kapsamda ? d.in_scope : d.out_scope}</span>`;
+    } else {
+      tip.style.display = "none";
+    }
+  });
+
+  cv.addEventListener("mouseleave", () => {
+    isDragging = false;
+    hoveredNode = null;
+    tip.style.display = "none";
+    ciz(sonGrafik);
+  });
+
+  cv.addEventListener("wheel", e => {
+    e.preventDefault();
+    const rect = cv.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const factor = e.deltaY < 0 ? 1.15 : 0.87;
+    const newZoom = Math.max(0.1, Math.min(10, zoom * factor));
+
+    panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+    panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+    zoom = newZoom;
+
+    ciz(sonGrafik);
+  }, { passive: false });
+})();
+
+setLang(CUR_LANG);
+vakalar().catch(() => {});
 </script>
 </body>
 </html>
