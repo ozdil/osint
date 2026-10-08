@@ -2,41 +2,60 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>OSINT Platformu</title>
 <style>
 :root{--bg:#0f1115;--pn:#171a21;--bd:#2a2f3a;--fg:#d8dee9;--mut:#8a93a6;--ac:#7aa2f7;--ok:#9ece6a;--wr:#e0af68;--er:#f7768e}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:"JetBrainsMono Nerd Font","JetBrains Mono",monospace;font-size:12pt}
-header{padding:12px 20px;border-bottom:1px solid var(--bd);display:flex;gap:16px;align-items:center;justify-content:space-between}
-.hdr-left{display:flex;gap:16px;align-items:center}
-h1{font-size:18pt;margin:0;font-weight:600} h2{font-size:14pt;font-weight:600;margin:0 0 10px}
-main{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px}
-.pn{background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:16px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"JetBrainsMono Nerd Font","JetBrains Mono",monospace;font-size:12pt;overflow-x:hidden}
+header{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.hdr-left{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+h1{font-size:16pt;margin:0;font-weight:600} h2{font-size:13pt;font-weight:600;margin:0 0 10px}
+main{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px;min-height:calc(100vh - 65px)}
+aside{min-width:0}
+section{min-width:0}
+.pn{background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:14px;margin-bottom:16px;overflow:hidden}
 label{display:block;font-size:10pt;color:var(--mut);margin:8px 0 4px}
-input,select,button{font:inherit;width:100%;padding:7px 9px;background:#0b0d11;color:var(--fg);border:1px solid var(--bd);border-radius:4px}
-button{background:var(--ac);color:#0b0d11;border:0;cursor:pointer;margin-top:10px;font-weight:600}
+input,select,button{font:inherit;width:100%;padding:8px 10px;background:#0b0d11;color:var(--fg);border:1px solid var(--bd);border-radius:4px}
+button{background:var(--ac);color:#0b0d11;border:0;cursor:pointer;margin-top:10px;font-weight:600;touch-action:manipulation}
 button.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
-.row{display:flex;gap:8px} .row>*{flex:1}
-pre{background:#0b0d11;border:1px solid var(--bd);padding:10px;overflow:auto;max-height:60vh;font-size:10pt;margin:0}
-.cv-container{position:relative;width:100%;height:540px;background:#0b0d11;border:1px solid var(--bd);border-radius:4px;overflow:hidden}
-canvas{width:100%;height:100%;display:block;cursor:grab}
+.row{display:flex;gap:8px;flex-wrap:wrap} .row>*{flex:1;min-width:0}
+pre{background:#0b0d11;border:1px solid var(--bd);padding:10px;overflow:auto;max-height:60vh;font-size:10pt;margin:0;word-break:break-all}
+.cv-container{position:relative;width:100%;height:65vh;min-height:380px;background:#0b0d11;border:1px solid var(--bd);border-radius:4px;overflow:hidden;touch-action:none}
+canvas{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
 canvas:active{cursor:grabbing}
 .cv-toolbar{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:10}
-.cv-toolbar button{width:36px;height:36px;padding:0;margin:0;display:flex;align-items:center;justify-content:center;background:#171a21cc;color:var(--fg);border:1px solid var(--bd);border-radius:4px;font-size:12pt;backdrop-filter:blur(4px)}
+.cv-toolbar button{width:36px;height:36px;padding:0;margin:0;display:flex;align-items:center;justify-content:center;background:#171a21ee;color:var(--fg);border:1px solid var(--bd);border-radius:4px;font-size:12pt;backdrop-filter:blur(4px)}
+.cv-toolbar button.active{background:var(--ac);color:#0b0d11;border-color:var(--ac)}
 .cv-toolbar button:hover{background:var(--ac);color:#0b0d11}
 .cv-stats{position:absolute;bottom:10px;left:10px;font-size:9pt;color:var(--mut);background:#0b0d11cc;padding:4px 8px;border-radius:4px;border:1px solid var(--bd);pointer-events:none}
-.tabs{display:flex;gap:6px;margin-bottom:10px} .tabs button{width:auto;margin:0;padding:5px 12px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px} .tabs button{width:auto;margin:0;padding:6px 14px;white-space:nowrap}
 .tabs button.on{background:var(--ac);color:#0b0d11}
-table{width:100%;border-collapse:collapse;font-size:11pt} td,th{border-bottom:1px solid var(--bd);padding:5px;text-align:left}
-.mut{color:var(--mut);font-size:10pt} .st{font-size:10pt;margin-top:8px;min-height:1.2em;display:flex;align-items:center;gap:8px}
-.lg{margin-top:8px} .lg span{display:inline-block;margin-right:10px;font-size:9pt}
-.lang-btn{width:auto;margin:0;padding:4px 10px;font-size:10pt;font-weight:600;background:transparent;color:var(--mut);border:1px solid var(--bd)}
+.table-wrap{width:100%;overflow-x:auto;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:11pt;min-width:480px} td,th{border-bottom:1px solid var(--bd);padding:6px 8px;text-align:left;word-break:break-word}
+.mut{color:var(--mut);font-size:10pt} .st{font-size:10pt;margin-top:8px;min-height:1.2em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lg{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px} .lg span{display:inline-flex;align-items:center;gap:4px;font-size:9pt}
+.lang-btn{width:auto;margin:0;padding:5px 12px;font-size:10pt;font-weight:600;background:transparent;color:var(--mut);border:1px solid var(--bd);touch-action:manipulation}
 .lang-btn.active{background:var(--ac);color:#0b0d11;border-color:var(--ac)}
-.spinner{display:none;width:14px;height:14px;border:2px solid var(--bd);border-top:2px solid var(--ac);border-radius:50%;animation:spin .8s linear infinite}
+.spinner{display:none;width:14px;height:14px;border:2px solid var(--bd);border-top:2px solid var(--ac);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 .pulse{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.node-tooltip{position:absolute;display:none;background:#171a21ee;border:1px solid var(--ac);color:var(--fg);padding:6px 10px;border-radius:4px;font-size:9.5pt;pointer-events:none;z-index:20;max-width:320px;word-break:break-all;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.node-tooltip{position:absolute;display:none;background:#171a21f5;border:1px solid var(--ac);color:var(--fg);padding:8px 12px;border-radius:4px;font-size:9.5pt;pointer-events:none;z-index:20;max-width:85vw;word-break:break-all;box-shadow:0 6px 16px rgba(0,0,0,.6)}
+
+@media (max-width: 900px) {
+  main{grid-template-columns:1fr;padding:10px;gap:12px}
+  header{padding:10px 12px}
+  h1{font-size:14pt}
+  .cv-container{height:52vh;min-height:300px}
+  .pn{padding:10px;margin-bottom:12px}
+}
+@media (max-width: 480px) {
+  .hdr-left span.mut{display:none}
+  .cv-toolbar button{width:32px;height:32px;font-size:10pt}
+  .cv-container{height:46vh;min-height:260px}
+  .row{flex-direction:column;gap:6px}
+}
 </style>
 </head>
 <body>
@@ -107,6 +126,7 @@ table{width:100%;border-collapse:collapse;font-size:11pt} td,th{border-bottom:1p
       <div class="cv-container" id="cvBox">
         <canvas id="cv"></canvas>
         <div class="cv-toolbar">
+          <button id="btnLblToggle" onclick="toggleLabels()" title="Tum Etiketleri Goster/Gizle">T</button>
           <button onclick="zoomBtn(1.25)" title="Yaklas (+)">+</button>
           <button onclick="zoomBtn(0.8)" title="Uzaklas (-)">-</button>
           <button onclick="zoomFit()" title="Merkeze Sigdir (Reset)">[ ]</button>
@@ -236,6 +256,14 @@ const I18N = {
 };
 
 let CUR_LANG = localStorage.getItem("osint_lang") || "tr";
+let showAllLabels = false;
+
+function toggleLabels() {
+  showAllLabels = !showAllLabels;
+  const btn = $("btnLblToggle");
+  if (btn) btn.classList.toggle("active", showAllLabels);
+  ciz(sonGrafik);
+}
 
 function setLang(l) {
   CUR_LANG = l;
@@ -398,10 +426,10 @@ function renderAnaliz(a) {
     `<tr><td>${esc(x.tur)}</td><td>${esc(x.deger)}</td><td>${Object.entries(x.baglantilar || {}).map(([n, u]) => u.startsWith("http") ? `<a style="color:var(--ac)" target=_blank rel=noopener href="${esc(u)}">${esc(n)}</a>` : `${esc(n)}: ${esc(u)}`).join(" ")}</td></tr>`
   ).join("");
 
-  $("t-a").innerHTML = `<h2>${d.h2_central}</h2><table><tr><th>${d.th_type}</th><th>${d.th_val}</th><th>${d.th_deg}</th><th>${d.th_scope}</th></tr>${c}</table>
-  <h2 style="margin-top:18px">${d.h2_clusters}</h2><table><tr><th>${d.th_type}</th><th>${d.th_indicator}</th><th>${d.th_weight}</th><th>${d.th_entities}</th><th>${d.th_comment}</th></tr>${k}</table>
-  <h2 style="margin-top:18px">${d.h2_links}</h2><table><tr><th>A</th><th>B</th><th>${d.th_score}</th><th>${d.th_conf}</th></tr>${l}</table>
-  <h2 style="margin-top:18px">${d.h2_pivots}</h2><table><tr><th>${d.th_type}</th><th>${d.th_val}</th><th>${d.th_links}</th></tr>${p}</table>`;
+  $("t-a").innerHTML = `<h2>${d.h2_central}</h2><div class="table-wrap"><table><tr><th>${d.th_type}</th><th>${d.th_val}</th><th>${d.th_deg}</th><th>${d.th_scope}</th></tr>${c}</table></div>
+  <h2 style="margin-top:18px">${d.h2_clusters}</h2><div class="table-wrap"><table><tr><th>${d.th_type}</th><th>${d.th_indicator}</th><th>${d.th_weight}</th><th>${d.th_entities}</th><th>${d.th_comment}</th></tr>${k}</table></div>
+  <h2 style="margin-top:18px">${d.h2_links}</h2><div class="table-wrap"><table><tr><th>A</th><th>B</th><th>${d.th_score}</th><th>${d.th_conf}</th></tr>${l}</table></div>
+  <h2 style="margin-top:18px">${d.h2_pivots}</h2><div class="table-wrap"><table><tr><th>${d.th_type}</th><th>${d.th_val}</th><th>${d.th_links}</th></tr>${p}</table></div>`;
 }
 
 const RENK = {
@@ -422,7 +450,7 @@ const RENK = {
 function zoomBtn(f) {
   const cv = $("cv");
   const w = cv.clientWidth, h = cv.clientHeight;
-  const newZoom = Math.max(0.1, Math.min(8, zoom * f));
+  const newZoom = Math.max(0.1, Math.min(10, zoom * f));
   panX = w / 2 - (w / 2 - panX) * (newZoom / zoom);
   panY = h / 2 - (h / 2 - panY) * (newZoom / zoom);
   zoom = newZoom;
@@ -450,9 +478,9 @@ function zoomFit() {
   const bh = (maxY - minY) || 100;
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  const pad = 80;
-  zoom = Math.min((w - pad) / bw, (h - pad) / bh, 2.5);
-  zoom = Math.max(0.2, zoom);
+  const pad = Math.min(w * 0.1, 80);
+  zoom = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh, 1.8);
+  zoom = Math.max(0.1, zoom);
   panX = w / 2 - cx * zoom;
   panY = h / 2 - cy * zoom;
   ciz(sonGrafik);
@@ -463,39 +491,56 @@ function initLayout(g, w, h) {
   N.forEach((n, i) => {
     idx[n.id] = n;
     if (n.x === undefined) {
-      n.x = w / 2 + Math.cos(i) * (60 + n.derinlik * 140);
-      n.y = h / 2 + Math.sin(i) * (60 + n.derinlik * 140);
+      // Daha genis dairesel baslangic yaricapi
+      n.x = w / 2 + Math.cos(i) * (100 + n.derinlik * 200);
+      n.y = h / 2 + Math.sin(i) * (100 + n.derinlik * 200);
       n.vx = 0; n.vy = 0;
     }
   });
   const E = g.kenarlar.filter(e => idx[e.kaynak] && idx[e.hedef]);
-  for (let it = 0; it < 320; it++) {
-    for (const a of N) {
-      for (const b of N) {
-        if (a === b) continue;
+
+  // Derece (baglanti sayisi) hesapla
+  const deg = {};
+  E.forEach(e => {
+    deg[e.kaynak] = (deg[e.kaynak] || 0) + 1;
+    deg[e.hedef] = (deg[e.hedef] || 0) + 1;
+  });
+  N.forEach(n => n.deg = deg[n.id] || 0);
+
+  // Kuvvet tabanli duzenleme (Force-Directed Simulation)
+  for (let it = 0; it < 350; it++) {
+    for (let i = 0; i < N.length; i++) {
+      const a = N[i];
+      for (let j = i + 1; j < N.length; j++) {
+        const b = N[j];
         const dx = a.x - b.x, dy = a.y - b.y;
-        const d2 = dx * dx + dy * dy + 0.01;
-        const f = 1200 / d2;
+        const d2 = dx * dx + dy * dy + 0.1;
+        // Guclu itme kuvveti: dugumler ve etiketler birbirini iter
+        const rep = 2800 / d2;
         const dist = Math.sqrt(d2);
-        a.vx += dx * f / dist;
-        a.vy += dy * f / dist;
+        const fx = dx * rep / dist;
+        const fy = dy * rep / dist;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
       }
     }
     for (const e of E) {
       const a = idx[e.kaynak], b = idx[e.hedef];
       const dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy) || 1;
-      const f = (d - 85) * 0.025;
+      // Ideal baglanti mesafesi (130px)
+      const f = (d - 130) * 0.02;
       a.vx += dx / d * f; a.vy += dy / d * f;
       b.vx -= dx / d * f; b.vy -= dy / d * f;
     }
     for (const n of N) {
-      n.vx += (w / 2 - n.x) * 0.002;
-      n.vy += (h / 2 - n.y) * 0.002;
+      // Merkeze hafif cekim
+      n.vx += (w / 2 - n.x) * 0.0015;
+      n.vy += (h / 2 - n.y) * 0.0015;
       n.x += n.vx * 0.5;
       n.y += n.vy * 0.5;
-      n.vx *= 0.6;
-      n.vy *= 0.6;
+      n.vx *= 0.55;
+      n.vy *= 0.55;
     }
   }
 }
@@ -529,43 +574,108 @@ function ciz(g) {
 
   ctx.clearRect(0, 0, w, h);
 
-  // Dunya koordinatlarina donusum
   ctx.save();
   ctx.translate(panX, panY);
   ctx.scale(zoom, zoom);
 
-  // Kenarlar
-  ctx.lineWidth = 1 / zoom;
+  // 1. Kenarlar (Edges)
   for (const e of E) {
     const a = idx[e.kaynak], b = idx[e.hedef];
     const isConn = hoveredNode && (hoveredNode.id === a.id || hoveredNode.id === b.id);
     ctx.strokeStyle = isConn ? "rgba(122,162,247,0.85)" : "#222733";
-    ctx.lineWidth = isConn ? (2 / zoom) : (1 / zoom);
+    ctx.lineWidth = (isConn ? 2 : 1) / zoom;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
   }
 
-  // Dugumler
-  ctx.font = '10px "JetBrainsMono Nerd Font", monospace';
+  // 2. Dugum Noktalari (Circles)
   for (const n of N) {
     const isHov = hoveredNode && hoveredNode.id === n.id;
+    const isSeed = n.derinlik === 0;
     ctx.fillStyle = RENK[n.tur] || "#888";
     ctx.beginPath();
-    const r = (n.derinlik === 0 ? 8 : (n.kapsamda ? 5 : 3)) * (isHov ? 1.6 : 1);
+    const r = (isSeed ? 8 : (n.kapsamda ? 5 : 3.5)) * (isHov ? 1.5 : 1);
     ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
     ctx.fill();
 
-    if (isHov) {
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2 / zoom;
+    if (isHov || isSeed) {
+      ctx.strokeStyle = isSeed ? "var(--ac)" : "#ffffff";
+      ctx.lineWidth = (isSeed ? 2.5 : 2) / zoom;
       ctx.stroke();
     }
+  }
 
-    if (zoom >= 0.9 || isHov || N.length < 50 || n.derinlik === 0) {
-      ctx.fillStyle = isHov ? "#ffffff" : "#a9b1d6";
-      ctx.fillText(n.deger.slice(0, 36), n.x + r + 3, n.y + 3);
+  // 3. Cakismayi Onleyen Etiketleme (Collision Avoidance Text Rendering)
+  ctx.font = '10px "JetBrainsMono Nerd Font", monospace';
+  const labelRects = [];
+
+  // Oncelik siralamasi: Hover edilen > Tohum dugum > Yüksek baglantili > Kapsam icindekiler
+  const sortedForLabels = [...N].sort((a, b) => {
+    if (hoveredNode && a.id === hoveredNode.id) return -1;
+    if (hoveredNode && b.id === hoveredNode.id) return 1;
+    if (a.derinlik === 0) return -1;
+    if (b.derinlik === 0) return 1;
+    return (b.deg || 0) - (a.deg || 0);
+  });
+
+  for (const n of sortedForLabels) {
+    const isHov = hoveredNode && hoveredNode.id === n.id;
+    const isSeed = n.derinlik === 0;
+
+    // Etiket gosterme esigi: Yakınlasıldıysa (zoom >= 1.2), tohumsa, hover edildiyse veya az dugum varsa
+    if (!showAllLabels && !isHov && !isSeed && zoom < 1.05 && N.length > 25 && (n.deg || 0) < 2) {
+      continue;
+    }
+
+    const r = (isSeed ? 8 : (n.kapsamda ? 5 : 3.5)) * (isHov ? 1.5 : 1);
+    const txt = n.deger.length > 32 ? n.deger.slice(0, 30) + ".." : n.deger;
+    const tw = ctx.measureText(txt).width;
+    const th = 12;
+
+    // Aday etiket konumlari (sag, sol, alt, ust)
+    const candidates = [
+      { x: n.x + r + 4, y: n.y - th / 2, tx: n.x + r + 4, ty: n.y + 3 },
+      { x: n.x - r - 4 - tw, y: n.y - th / 2, tx: n.x - r - 4 - tw, ty: n.y + 3 },
+      { x: n.x - tw / 2, y: n.y + r + 4, tx: n.x - tw / 2, ty: n.y + r + 4 + th - 2 },
+      { x: n.x - tw / 2, y: n.y - r - 4 - th, tx: n.x - tw / 2, ty: n.y - r - 4 - 2 }
+    ];
+
+    let chosen = null;
+    if (isHov) {
+      chosen = candidates[0];
+    } else {
+      for (const cand of candidates) {
+        const rect = { x: cand.x, y: cand.y, w: tw + 6, h: th + 4 };
+        const overlap = labelRects.some(b =>
+          rect.x < b.x + b.w && rect.x + rect.w > b.x &&
+          rect.y < b.y + b.h && rect.y + rect.h > b.y
+        );
+        if (!overlap) {
+          chosen = cand;
+          break;
+        }
+      }
+    }
+
+    // Eger cakismayacak konum bulunduysa veya hover/tohum ise etiket ciz
+    if (chosen || isHov || isSeed) {
+      const p = chosen || candidates[0];
+      labelRects.push({ x: p.x, y: p.y, w: tw + 6, h: th + 4 });
+
+      // Arka plan kutucugu (yazinin arkasindaki cizgilerin yaziyi kapatmamasi icin)
+      ctx.fillStyle = isHov ? "#171a21f8" : "rgba(15, 17, 21, 0.85)";
+      ctx.fillRect(p.x - 2, p.y - 1, tw + 4, th + 2);
+
+      if (isHov) {
+        ctx.strokeStyle = "var(--ac)";
+        ctx.lineWidth = 1 / zoom;
+        ctx.strokeRect(p.x - 2, p.y - 1, tw + 4, th + 2);
+      }
+
+      ctx.fillStyle = isHov ? "#ffffff" : (isSeed ? "var(--ac)" : "#d8dee9");
+      ctx.fillText(txt, p.tx, p.ty);
     }
   }
 
@@ -615,7 +725,7 @@ function ciz(g) {
     const N = Object.values(sonGrafik.dugumler);
     for (const n of N) {
       const d = Math.hypot(n.x - worldX, n.y - worldY);
-      const hitRadius = (n.derinlik === 0 ? 12 : 8) / Math.min(1, zoom);
+      const hitRadius = (n.derinlik === 0 ? 14 : 10) / Math.min(1, zoom);
       if (d < hitRadius && d < hitDist) {
         hit = n;
         hitDist = d;
@@ -629,10 +739,10 @@ function ciz(g) {
 
     if (hit) {
       tip.style.display = "block";
-      tip.style.left = (mouseX + 15) + "px";
-      tip.style.top = (mouseY + 15) + "px";
+      tip.style.left = (mouseX + 16) + "px";
+      tip.style.top = (mouseY + 16) + "px";
       const d = I18N[CUR_LANG];
-      tip.innerHTML = `<b>${esc(hit.tur)}</b><br>${esc(hit.deger)}<br><span class="mut">${d.lbl_depth}: ${hit.derinlik} | ${hit.kapsamda ? d.in_scope : d.out_scope}</span>`;
+      tip.innerHTML = `<b>${esc(hit.tur)}</b><br>${esc(hit.deger)}<br><span class="mut">${d.lbl_depth}: ${hit.derinlik} | ${hit.kapsamda ? d.in_scope : d.out_scope} | ${d.th_deg}: ${hit.deg || 0}</span>`;
     } else {
       tip.style.display = "none";
     }
@@ -660,6 +770,94 @@ function ciz(g) {
 
     ciz(sonGrafik);
   }, { passive: false });
+
+  // Mobil Dokunmatik (Touch) Desteği - Tek parmak kaydirma, cift parmak pinch-zoom
+  let touchStartDist = 0;
+  let touchStartZoom = 1;
+  let isTouching = false;
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  cv.addEventListener("touchstart", e => {
+    if (e.touches.length === 1) {
+      isTouching = true;
+      const t = e.touches[0];
+      const rect = cv.getBoundingClientRect();
+      touchStartX = t.clientX - panX;
+      touchStartY = t.clientY - panY;
+
+      // Dokunulan dugumu kontrol et (Tooltip/secim)
+      const mouseX = t.clientX - rect.left;
+      const mouseY = t.clientY - rect.top;
+      const worldX = (mouseX - panX) / zoom;
+      const worldY = (mouseY - panY) / zoom;
+      let hit = null;
+      let hitDist = Infinity;
+      if (sonGrafik) {
+        const N = Object.values(sonGrafik.dugumler);
+        for (const n of N) {
+          const d = Math.hypot(n.x - worldX, n.y - worldY);
+          const hitRadius = (n.derinlik === 0 ? 18 : 14) / Math.min(1, zoom);
+          if (d < hitRadius && d < hitDist) {
+            hit = n;
+            hitDist = d;
+          }
+        }
+      }
+      hoveredNode = hit;
+      if (hit) {
+        tip.style.display = "block";
+        tip.style.left = Math.min(rect.width - 200, Math.max(10, mouseX - 60)) + "px";
+        tip.style.top = Math.max(10, mouseY - 70) + "px";
+        const d = I18N[CUR_LANG];
+        tip.innerHTML = `<b>${esc(hit.tur)}</b><br>${esc(hit.deger)}<br><span class="mut">${d.lbl_depth}: ${hit.derinlik} | ${hit.kapsamda ? d.in_scope : d.out_scope}</span>`;
+      } else {
+        tip.style.display = "none";
+      }
+      ciz(sonGrafik);
+    } else if (e.touches.length === 2) {
+      isTouching = false;
+      tip.style.display = "none";
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      touchStartDist = Math.hypot(dx, dy);
+      touchStartZoom = zoom;
+    }
+  }, { passive: true });
+
+  cv.addEventListener("touchmove", e => {
+    if (e.touches.length === 1 && isTouching) {
+      e.preventDefault();
+      const t = e.touches[0];
+      panX = t.clientX - touchStartX;
+      panY = t.clientY - touchStartY;
+      tip.style.display = "none";
+      ciz(sonGrafik);
+    } else if (e.touches.length === 2 && touchStartDist > 0) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 5) {
+        const rect = cv.getBoundingClientRect();
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        const factor = dist / touchStartDist;
+        const newZoom = Math.max(0.1, Math.min(10, touchStartZoom * factor));
+        panX = midX - (midX - panX) * (newZoom / zoom);
+        panY = midY - (midY - panY) * (newZoom / zoom);
+        zoom = newZoom;
+        ciz(sonGrafik);
+      }
+    }
+  }, { passive: false });
+
+  const endTouch = () => {
+    isTouching = false;
+    touchStartDist = 0;
+  };
+  cv.addEventListener("touchend", endTouch);
+  cv.addEventListener("touchcancel", endTouch);
 })();
 
 setLang(CUR_LANG);
