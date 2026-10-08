@@ -173,8 +173,9 @@ pub async fn email(http: &Http, cfg: &Config, target: &str) -> Result<Value> {
     let addr = format!("{local}@{domain}");
     let hash = hex::encode(Md5::digest(addr.as_bytes()));
     let gurl = format!("https://en.gravatar.com/{hash}.json");
-    let (mx, grav) = tokio::join!(
+    let (mx, sec_info, grav) = tokio::join!(
         dns(http, &domain, "MX"),
+        crate::modules::domain::email_security(http, &domain),
         http.json(&gurl, 256 * 1024)
     );
     let mx = mx.unwrap_or_default();
@@ -212,6 +213,7 @@ pub async fn email(http: &Http, cfg: &Config, target: &str) -> Result<Value> {
         "teslim_edilebilir_alan": !mx.is_empty(),
         "ucretsiz_saglayici": free.contains(&domain.as_str()),
         "gecici_eposta": disposable.contains(&domain.as_str()),
+        "alan_eposta_guvenligi": sec_info,
         "gravatar_md5": hash,
         "gravatar": gravatar,
         "ihlaller": breaches,

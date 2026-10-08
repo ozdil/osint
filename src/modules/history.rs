@@ -9,23 +9,55 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub async fn cert_history(http: &Http, d: &str) -> Result<Value> {
-    let v = http.json(&format!("https://crt.sh/?q={d}&output=json"), 8 * 1024 * 1024).await?;
-    let rows = v.as_array().cloned().unwrap_or_default();
     let mut issuers: BTreeMap<String, usize> = BTreeMap::new();
     let mut years: BTreeMap<String, usize> = BTreeMap::new();
     let mut first: Option<String> = None;
-    for r in &rows {
-        let iss = r["issuer_name"].as_str().unwrap_or("");
-        let org = iss.split(',').find_map(|p| p.trim().strip_prefix("O=")).unwrap_or(iss).trim_matches('"').to_string();
-        *issuers.entry(org).or_default() += 1;
-        if let Some(nb) = r["not_before"].as_str() {
-            *years.entry(nb.chars().take(4).collect()).or_default() += 1;
-            if first.as_deref().is_none_or(|f| nb < f) {
-                first = Some(nb.to_string());
+    let mut total_count = 0usize;
+    let mut source = "crt.sh";
+
+    // 1. Birincil CT Log Kaynagi: crt.sh
+    let crt_res = http.json(&format!("https://crt.sh/?q={d}&output=json"), 8 * 1024 * 1024).await;
+    if let Ok(v) = crt_res {
+        let rows = v.as_array().cloned().unwrap_or_default();
+        total_count = rows.len();
+        for r in &rows {
+            let iss = r["issuer_name"].as_str().unwrap_or("");
+            let org = iss.split(',').find_map(|p| p.trim().strip_prefix("O=")).unwrap_or(iss).trim_matches('"').to_string();
+            if !org.is_empty() {
+                *issuers.entry(org).or_default() += 1;
+            }
+            if let Some(nb) = r["not_before"].as_str() {
+                *years.entry(nb.chars().take(4).collect()).or_default() += 1;
+                if first.as_deref().is_none_or(|f| nb < f) {
+                    first = Some(nb.to_string());
+                }
+            }
+        }
+    } else {
+        // 2. Yedek CT Log Kaynagi: CertSpotter
+        source = "certspotter";
+        let cs_res = http.json(&format!("https://api.certspotter.com/v1/issuances?domain={d}&include_subdomains=true&expand=dns_names"), 4 * 1024 * 1024).await;
+        if let Ok(v) = cs_res {
+            let rows = v.as_array().cloned().unwrap_or_default();
+            total_count = rows.len();
+            for r in &rows {
+                if let Some(nb) = r["not_before"].as_str() {
+                    *years.entry(nb.chars().take(4).collect()).or_default() += 1;
+                    if first.as_deref().is_none_or(|f| nb < f) {
+                        first = Some(nb.to_string());
+                    }
+                }
             }
         }
     }
-    Ok(json!({"sertifika_sayisi": rows.len(), "ilk_sertifika": first, "saglayicilar": issuers, "yillara_gore": years}))
+
+    Ok(json!({
+        "kaynak": source,
+        "sertifika_sayisi": total_count,
+        "ilk_sertifika": first,
+        "saglayicilar": issuers,
+        "yillara_gore": years
+    }))
 }
 
 /// Arsivlenmis URL listesinden uc nokta envanteri cikarir.

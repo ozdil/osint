@@ -105,6 +105,28 @@ pub fn analyze(g: &Graph) -> Value {
         .map(|n| json!({"tur": n.tur, "deger": n.deger, "baglantilar": external_pivots(n.tur, &n.deger)}))
         .collect();
 
+    // Grafikte derece merkeziyeti (Degree Centrality): en cok baglantiya sahip kritik kilit dugumler
+    let mut degrees: BTreeMap<String, usize> = BTreeMap::new();
+    for e in &g.kenarlar {
+        *degrees.entry(e.kaynak.clone()).or_default() += 1;
+        *degrees.entry(e.hedef.clone()).or_default() += 1;
+    }
+    let mut central_nodes: Vec<Value> = degrees
+        .into_iter()
+        .filter_map(|(id, deg)| {
+            let n = g.dugumler.get(&id)?;
+            Some(json!({
+                "id": id,
+                "tur": n.tur,
+                "deger": n.deger,
+                "derece": deg,
+                "kapsamda": n.kapsamda
+            }))
+        })
+        .collect();
+    central_nodes.sort_by(|a, b| b["derece"].as_u64().cmp(&a["derece"].as_u64()));
+    central_nodes.truncate(15);
+
     let mut by_kind: BTreeMap<String, usize> = BTreeMap::new();
     for n in g.dugumler.values() {
         *by_kind.entry(format!("{:?}", n.tur)).or_default() += 1;
@@ -112,11 +134,13 @@ pub fn analyze(g: &Graph) -> Value {
 
     json!({
         "ozet": {"dugum": g.dugumler.len(), "kenar": g.kenarlar.len(), "tur_dagilimi": by_kind},
+        "merkezi_dugumler": central_nodes,
         "kumeler": clusters,
         "varlik_baglantilari": links,
         "harici_pivotlar": pivots,
     })
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -138,5 +162,9 @@ mod tests {
         let r = analyze(&g);
         assert_eq!(r["kumeler"][0]["gosterge"], "UA-1-1");
         assert_eq!(r["varlik_baglantilari"][0]["guven"], "yuksek");
+        let top_central = &r["merkezi_dugumler"][0];
+        assert_eq!(top_central["id"], "t");
+        assert_eq!(top_central["derece"], 2);
     }
 }
+

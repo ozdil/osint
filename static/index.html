@@ -91,12 +91,15 @@ async function pivotla(){st("Pivot calisiyor; derinlige gore birkac dakika sureb
   $("out").textContent=JSON.stringify(v,null,2);sonGrafik=v.grafik;analiz(v.analiz);document.querySelector('[data-t=g]').click();
   st(`Tamamlandi: ${v.analiz.ozet.dugum} dugum, ${v.analiz.ozet.kenar} kenar (${((Date.now()-t0)/1000).toFixed(1)} sn)`,"var(--ok)");await vakalar()}catch(e){st(e.message,"var(--er)")}}
 function analiz(a){
+  const c=(a.merkezi_dugumler||[]).map(x=>`<tr><td>${esc(x.tur)}</td><td><b>${esc(x.deger)}</b></td><td>${x.derece}</td><td>${x.kapsamda?'Kapsamda':'Harici'}</td></tr>`).join("")||'<tr><td colspan=4 class=mut>Veri yok</td></tr>';
   const k=a.kumeler.map(c=>`<tr><td>${esc(c.gosterge_turu)}</td><td>${esc(c.gosterge)}</td><td>${c.agirlik}</td><td>${c.varliklar.map(esc).join("<br>")}</td><td class=mut>${esc(c.yorum)}</td></tr>`).join("")||'<tr><td colspan=5 class=mut>Ortak gosterge bulunamadi</td></tr>';
   const l=a.varlik_baglantilari.map(x=>`<tr><td>${esc(x.a)}</td><td>${esc(x.b)}</td><td>${x.skor}</td><td>${esc(x.guven)}</td></tr>`).join("");
   const p=a.harici_pivotlar.map(x=>`<tr><td>${esc(x.tur)}</td><td>${esc(x.deger)}</td><td>${Object.entries(x.baglantilar||{}).map(([n,u])=>u.startsWith("http")?`<a style="color:var(--ac)" target=_blank rel=noopener href="${esc(u)}">${esc(n)}</a>`:`${esc(n)}: ${esc(u)}`).join(" ")}</td></tr>`).join("");
-  $("t-a").innerHTML=`<h2>Ortak Gosterge Kumeleri</h2><table><tr><th>Tur</th><th>Gosterge</th><th>Agirlik</th><th>Varliklar</th><th>Yorum</th></tr>${k}</table>
-  <h2 style="margin-top:18px">Varlik Baglantilari</h2><table><tr><th>A</th><th>B</th><th>Skor</th><th>Guven</th></tr>${l}</table>
-  <h2 style="margin-top:18px">Harici Pivotlar</h2><table><tr><th>Tur</th><th>Deger</th><th>Baglantilar</th></tr>${p}</table>`}
+  $("t-a").innerHTML=`<h2>Kritik Merkezi Düğümler (Derece Merkeziyeti)</h2><table><tr><th>Tür</th><th>Değer</th><th>Bağlantı Sayısı</th><th>Kapsam</th></tr>${c}</table>
+  <h2 style="margin-top:18px">Ortak Gösterge Kümeleri</h2><table><tr><th>Tür</th><th>Gösterge</th><th>Ağırlık</th><th>Varlıklar</th><th>Yorum</th></tr>${k}</table>
+  <h2 style="margin-top:18px">Varlık Bağlantıları</h2><table><tr><th>A</th><th>B</th><th>Skor</th><th>Güven</th></tr>${l}</table>
+  <h2 style="margin-top:18px">Harici Pivotlar</h2><table><tr><th>Tür</th><th>Değer</th><th>Bağlantılar</th></tr>${p}</table>`}
+
 const RENK={domain:"#7aa2f7",ip:"#9ece6a",url:"#2ac3de",email:"#e0af68",username:"#bb9af7",account:"#c0caf5",asn:"#73daca",tracking_id:"#f7768e",favicon_hash:"#ff9e64",nameserver:"#565f89",registrar:"#414868",technology:"#3b4261"};
 function ciz(g){
   const cv=$("cv");if(!cv.clientWidth)return;

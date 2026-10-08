@@ -85,22 +85,44 @@ pub async fn rdap(http: &Http, d: &str) -> Result<Value> {
 }
 const MAX_RDAP: usize = 512 * 1024;
 
-/// crt.sh uzerinden alt alan adlari. Buyuk alan adlari icin 8 MiB tavan.
+/// crt.sh ve CertSpotter uzerinden alt alan adlari (Cift kaynakli CT Log arastirmasi).
 pub async fn subdomains(http: &Http, d: &str) -> Result<Vec<String>> {
-    let url = format!("https://crt.sh/?q=%25.{d}&output=json");
-    let v = http.json(&url, 8 * 1024 * 1024).await?;
     let suffix = format!(".{d}");
     let mut set = BTreeSet::new();
-    for row in v.as_array().into_iter().flatten() {
-        if let Some(names) = row["name_value"].as_str() {
-            for n in names.lines() {
-                let n = n.trim().trim_start_matches("*.").to_ascii_lowercase();
+
+    // 1. Kaynak: crt.sh
+    let crt_url = format!("https://crt.sh/?q=%25.{d}&output=json");
+    if let Ok(v) = http.json(&crt_url, 8 * 1024 * 1024).await {
+        for row in v.as_array().into_iter().flatten() {
+            if let Some(names) = row["name_value"].as_str() {
+                for n in names.lines() {
+                    let n = n.trim().trim_start_matches("*.").to_ascii_lowercase();
+                    if n == d || n.ends_with(&suffix) {
+                        set.insert(n);
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Kaynak: CertSpotter (crt.sh genelde 502/rate-limit donerse kurtarici kaynak)
+    let cs_url = format!("https://api.certspotter.com/v1/issuances?domain={d}&include_subdomains=true&expand=dns_names");
+    if let Ok(v) = http.json(&cs_url, 4 * 1024 * 1024).await {
+        for item in v.as_array().into_iter().flatten() {
+            for dns_name in item["dns_names"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+                let n = dns_name.trim().trim_start_matches("*.").to_ascii_lowercase();
                 if n == d || n.ends_with(&suffix) {
                     set.insert(n);
                 }
             }
         }
     }
+
+    if set.is_empty() {
+        // En azindan ana alan adini ve www varyasyonunu temel olarak donelim
+        set.insert(d.to_string());
+    }
+
     Ok(set.into_iter().collect())
 }
 
