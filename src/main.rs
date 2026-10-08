@@ -69,8 +69,11 @@ enum Cmd {
         #[command(subcommand)]
         islem: ConfigCmd,
     },
-    /// Yerel web panelini baslat
+    /// Web panelini baslat
     Serve {
+        /// Dinlenecek adres (varsayilan: 127.0.0.1, dis erisim icin: 0.0.0.0)
+        #[arg(long)]
+        host: Option<String>,
         #[arg(short, long, default_value_t = 8787)]
         port: u16,
     },
@@ -182,7 +185,7 @@ async fn real_main() -> Result<()> {
                 }
             }
         },
-        Cmd::Serve { port } => server::serve(*port).await?,
+        Cmd::Serve { host, port } => server::serve(host.clone(), *port).await?,
         Cmd::ImzaGuncelle => {
             let n = modules::identity::update_db(&http).await?;
             println!("{n} ek platform imzasi kaydedildi (~/.config/osint/sites.json)");
